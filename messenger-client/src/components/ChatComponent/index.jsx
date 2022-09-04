@@ -42,7 +42,7 @@ export default function ChatComponent({children}) {
   };
 
   React.useEffect(()=>{
-    axios.get('http://localhost:5000/user/allChatList', {headers:{'Authorization':'Bearer '+ localStorage.token}}).then(r=>{
+    axios.post('http://localhost:5000/user/allChatList', {_id:localStorage._id},{headers:{'Authorization':'Bearer '+ localStorage.token}}).then(r=>{
       setState(r.data)
     })
       // if(search.length>=3){
@@ -56,20 +56,18 @@ export default function ChatComponent({children}) {
     const currentChat = selectedUser.filter(item=>item._id!==localStorage._id)
     sessionStorage.selectedChat = currentChat[0]._id
     axios.post('http://localhost:5000/user/select',{_id:currentChat},{headers:{'Authorization':'Bearer '+ localStorage.token}}).then(r=>{
-      socket.emit('join chat',r.data.roomId);
       dispatch(setMessages(r.data.messages))
       navigate(`/chat/${r.data.roomId}`)
     })
   
   }
-  // {item.users.filter(filteredUser=>filteredUser._id!==localStorage._id).map(name=>{
-  //   return <Typography key={name._id}>{name.fullname}</Typography>
-  // })}
+
   const filterFriends = (friends) =>{
     const data = friends.filter(item=>item._id!==localStorage._id)
+    console.log(data);
     return data
   }
-// console.log(state);
+
   return (
     <Box sx={{ display: 'flex' }}>
       <CssBaseline />
@@ -129,15 +127,15 @@ export default function ChatComponent({children}) {
                   <Avatar/>
                 </StyledBadge>
                 </ListItemIcon>
-                {/* {
+                {
                   filterFriends(item.users).map(user=>{
-                    return( */}
-                      <ListItemText sx={{ opacity: open ? 1 : 0 }}>
-                        {filterFriends(item.users)[0].fullname}
+                    return(
+                      <ListItemText sx={{ opacity: open ? 1 : 0 }} key={user._id}>
+                        {user.fullname}
                       </ListItemText>
-                    {/* )
-                  }) */}
-                {/* } */}
+                    )
+                  }) 
+                }
                 
               </ListItemButton>
             </ListItem>

@@ -45,9 +45,11 @@ export class UserController {
   }
 
   @UseGuards(JwtAuthGuard)
-  @Get('allChatList')
-  allChatList(@Request() req){
-    return this.userService.findAll(req.user.token._id)
+  @Post('allChatList')
+  allChatList(@Body('_id') id){
+    console.log(id);
+    
+    return this.userService.findAll(id)
   }
 
   @UseGuards(JwtAuthGuard)
@@ -63,8 +65,9 @@ export class UserController {
   createMessage(
     @Request() req, 
     @Body('chatId') chatId, 
-    @Body('content') content
+    @Body('content') content,
+    @Body('myId') myId,
     ){
-    return this.userService.createMessage(chatId, content, req.user.token._id)
+    return this.userService.createMessage(chatId, content, myId)
   }
 }

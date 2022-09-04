@@ -4,8 +4,12 @@ import { useEffect } from "react";
 import { useRef } from "react";
 import { useSelector } from "react-redux";
 import MessageComponent from "../../components/MessageComponent";
-
+import socketIOClient from "socket.io-client";
+import { useParams } from "react-router-dom";
+const ENDPOINT = "http://127.0.0.1:5000";
+const socket = socketIOClient(ENDPOINT);
 export default function Messages(){
+    const {id} = useParams()
     const data = useSelector(state=>state.messages)
     const scrollRef = useRef()
     useEffect(()=>{
@@ -13,6 +17,10 @@ export default function Messages(){
             scrollRef.current.scrollTo(0,scrollRef.current.scrollHeight)
         }
     })
+    useEffect(()=>{
+        socket.emit('join chat',id);
+    },[id])
+    // console.log(data,'rsdgfdfgsdfg');
     return(
         <Box>
             <Box width={'100%'} display={'flex'} alignItems={'flex-end'}>

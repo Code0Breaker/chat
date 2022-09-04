@@ -26,7 +26,7 @@ export class ChatGateway {
     @MessageBody() room,
     @ConnectedSocket() client: Socket
   ){
-    // client.join(room)
+    client.join(room)
   }
 
 
@@ -35,8 +35,8 @@ export class ChatGateway {
     @MessageBody() recievedMessage,
     @ConnectedSocket() client: Socket
   ) {
-      client.join(recievedMessage.roomId)
-      client.to(recievedMessage.roomId).emit("message recieved", {message:recievedMessage.message, senderId:recievedMessage.senderId});
+      client.join(recievedMessage.chatRoomId)
+      client.to(recievedMessage.chatRoomId).emit("message recieved", recievedMessage);
   }
 
   @SubscribeMessage('findAllChat')

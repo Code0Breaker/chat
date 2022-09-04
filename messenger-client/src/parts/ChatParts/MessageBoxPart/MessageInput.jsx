@@ -8,6 +8,8 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useState } from 'react';
 import axios from 'axios';
 import socketIOClient from "socket.io-client";
+import { setNewMessage } from '../../../redux/messages.reducer';
+import { useDispatch } from 'react-redux';
 const ENDPOINT = "http://127.0.0.1:5000";
 const socket = socketIOClient(ENDPOINT);
         
@@ -99,12 +101,12 @@ const CustomInput = React.forwardRef(function CustomInput(props, ref) {
 export default function MessageInput(){
   const [content, setContent] = useState('')
   const {id} = useParams()
-
+  const dispatch = useDispatch()
 const send = () =>{
-  axios.post('http://localhost:5000/user/createMessage',{chatId:id,content},{headers:{'Authorization':'Bearer '+localStorage.token}}).then(r=>{
-    console.log(r.data);
-    socket.emit("new message", {roomId:id, message:content, senderId:localStorage._id});
+  axios.post('http://localhost:5000/user/createMessage',{chatId:id,content, myId:localStorage._id},{headers:{'Authorization':'Bearer '+localStorage.token}}).then(r=>{
+    socket.emit("new message", r.data);
     socket.on('message recieved',data=>{
+      dispatch(setNewMessage(data));
       console.log(data);
     })
     setContent('')
