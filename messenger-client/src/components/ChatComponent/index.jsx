@@ -24,6 +24,7 @@ import { useNavigate } from 'react-router-dom';
 import { useDispatch } from 'react-redux';
 import { setMessages } from '../../redux/messages.reducer';
 import socketIOClient from "socket.io-client";
+import { useEffect } from 'react';
 const ENDPOINT = "http://127.0.0.1:5000";
 const socket = socketIOClient(ENDPOINT);
 export default function ChatComponent({children}) {
@@ -45,18 +46,25 @@ export default function ChatComponent({children}) {
     axios.post('http://localhost:5000/user/allChatList', {_id:localStorage._id},{headers:{'Authorization':'Bearer '+ localStorage.token}}).then(r=>{
       setState(r.data)
     })
-      // if(search.length>=3){
-      //   axios.post('http://localhost:5000/user/search',{text:search}).then(r=>{
-      //   setState(r.data);
-      // })
-      // }
+
   },[])
 
+  // useEffect(()=>{
+  //   if(search.length>=3){
+  //     axios.post('http://localhost:5000/user/search',{text:search}).then(r=>{
+  //     setState(r.data);
+  //   })
+  //   }
+  // },[search])
+
   const selectChat = (selectedUser) =>{
-    const currentChat = selectedUser.filter(item=>item._id!==localStorage._id)
-    sessionStorage.selectedChat = currentChat[0]._id
-    axios.post('http://localhost:5000/user/select',{_id:currentChat},{headers:{'Authorization':'Bearer '+ localStorage.token}}).then(r=>{
-      dispatch(setMessages(r.data.messages))
+    console.log(selectedUser);
+    const currentChat = selectedUser.find(item=>item._id!==localStorage._id)
+    sessionStorage.selectedChat = currentChat._id
+    // console.log(selectedUser[0]._id);
+    axios.post('http://localhost:5000/user/select',{_id:[currentChat._id]},{headers:{'Authorization':'Bearer '+ localStorage.token}}).then(r=>{
+      // dispatch(setMessages(r.data.messages))
+      console.log(r.data);
       navigate(`/chat/${r.data.roomId}`)
     })
   

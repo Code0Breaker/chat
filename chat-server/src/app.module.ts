@@ -7,9 +7,11 @@ import { UserModule } from './user/user.module';
 
 @Module({
   imports: [
-    MongooseModule.forRoot('mongodb+srv://video:Overlord_9600@cluster0.bh4zq.mongodb.net/chat'),
-    ChatModule, 
-    UserModule
+    MongooseModule.forRoot(
+      'mongodb+srv://video:Overlord_9600@cluster0.bh4zq.mongodb.net/chat',
+    ),
+    ChatModule,
+    UserModule,
   ],
   controllers: [AppController],
   providers: [AppService],

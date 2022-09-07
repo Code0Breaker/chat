@@ -1,4 +1,14 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Request } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  Delete,
+  UseGuards,
+  Request,
+} from '@nestjs/common';
 import { UserService } from './user.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
@@ -11,7 +21,6 @@ import { LocalAuthGuard } from './guards/local-auth.guard';
 @Controller('user')
 export class UserController {
   constructor(private readonly userService: UserService) {}
-
 
   @Post('register')
   async register(@Body() body: CreateUserDto) {
@@ -38,36 +47,34 @@ export class UserController {
     return this.userService.verifyUser(req.user);
   }
 
-  @UseGuards(JwtAuthGuard)
+  // @UseGuards(JwtAuthGuard)
   @Post('search')
-  search(@Body('text') text){
-    return this.userService.search(text)
+  search(@Body('text') text) {
+    return this.userService.search(text);
   }
 
   @UseGuards(JwtAuthGuard)
   @Post('allChatList')
-  allChatList(@Body('_id') id){
+  allChatList(@Body('_id') id) {
     console.log(id);
-    
-    return this.userService.findAll(id)
+
+    return this.userService.findAll(id);
   }
 
   @UseGuards(JwtAuthGuard)
   @Post('select')
-  selectUser(@Body('_id') id:string[], @Request() req){
-    console.log(id, req.user.token._id);
-    
-    return this.userService.find(id, req.user.token._id)
-  } 
+  selectUser(@Body('_id') id: string[], @Request() req) {
+    return this.userService.find(id, req.user.token._id);
+  }
 
   @UseGuards(JwtAuthGuard)
   @Post('createMessage')
   createMessage(
-    @Request() req, 
-    @Body('chatId') chatId, 
+    @Request() req,
+    @Body('chatId') chatId,
     @Body('content') content,
     @Body('myId') myId,
-    ){
-    return this.userService.createMessage(chatId, content, myId)
+  ) {
+    return this.userService.createMessage(chatId, content, myId);
   }
 }

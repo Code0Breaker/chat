@@ -10,6 +10,7 @@ import axios from 'axios';
 import socketIOClient from "socket.io-client";
 import { setNewMessage } from '../../../redux/messages.reducer';
 import { useDispatch } from 'react-redux';
+import { useEffect } from 'react';
 const ENDPOINT = "http://127.0.0.1:5000";
 const socket = socketIOClient(ENDPOINT);
         
@@ -102,13 +103,17 @@ export default function MessageInput(){
   const [content, setContent] = useState('')
   const {id} = useParams()
   const dispatch = useDispatch()
-const send = () =>{
-  axios.post('http://localhost:5000/user/createMessage',{chatId:id,content, myId:localStorage._id},{headers:{'Authorization':'Bearer '+localStorage.token}}).then(r=>{
-    socket.emit("new message", r.data);
+  useEffect(()=>{
     socket.on('message recieved',data=>{
       dispatch(setNewMessage(data));
       console.log(data);
     })
+  },[])
+const send = () =>{
+  axios.post('http://localhost:5000/user/createMessage',{chatId:id,content, myId:localStorage._id},{headers:{'Authorization':'Bearer '+localStorage.token}}).then(r=>{
+  console.log(r.data);  
+  socket.emit("new message", {...r.data});
+  dispatch(setNewMessage(r.data));
     setContent('')
   })
 }

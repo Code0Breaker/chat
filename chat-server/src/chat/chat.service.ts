@@ -11,8 +11,8 @@ export class ChatService {
   constructor(
     // @InjectModel(Chat.name) private chatModel: Model<ChatDocument>,
     @InjectModel(Messages.name) private messagesModel: Model<MessagesDocument>,
-    ) {}
-    
+  ) {}
+
   create(createChatDto: CreateChatDto) {
     return 'This action adds a new chat';
   }
