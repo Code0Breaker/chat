@@ -8,9 +8,8 @@ const socket = socketIOClient(ENDPOINT);
 export default function ChatLayout(){
     useEffect(()=>{
         if(localStorage._id){
-            socket.emit("setup", {_id:localStorage._id});
+            socket.emit("setup", localStorage._id);
         }
-        // socket.on("connected");
     },[])
     return(
         <Box width={'100%'} height={'100vh'} sx={{background:'white'}}>

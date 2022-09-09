@@ -106,7 +106,7 @@ export default function MessageInput(){
   useEffect(()=>{
     socket.on('message recieved',data=>{
       dispatch(setNewMessage(data));
-      console.log(data);
+      // console.log(data);
     })
   },[])
 const send = () =>{

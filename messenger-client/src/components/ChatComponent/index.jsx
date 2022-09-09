@@ -63,7 +63,7 @@ export default function ChatComponent({children}) {
     sessionStorage.selectedChat = currentChat._id
     // console.log(selectedUser[0]._id);
     axios.post('http://localhost:5000/user/select',{_id:[currentChat._id]},{headers:{'Authorization':'Bearer '+ localStorage.token}}).then(r=>{
-      // dispatch(setMessages(r.data.messages))
+      dispatch(setMessages(r.data.messages))
       console.log(r.data);
       navigate(`/chat/${r.data.roomId}`)
     })
