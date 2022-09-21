@@ -1,21 +1,18 @@
 import { Module } from '@nestjs/common';
 import { ChatService } from './chat.service';
-import { ChatGateway } from './chat.gateway';
-import { MongooseModule } from '@nestjs/mongoose';
-import { Chat, ChatSchema } from './schemas/chat.schema';
-import { Messages, MessagesSchema } from './schemas/messages.schema';
-import { User, UserSchema } from 'src/user/schemas/user.schema';
+import { ChatController } from './chat.controller';
 import { UserService } from 'src/user/user.service';
-import { JwtService } from '@nestjs/jwt';
+import { UserModule } from 'src/user/user.module';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { User } from 'src/user/entities/user.entity';
+import { Chat } from './entities/chat.entity';
+import { ConnectedIds } from './entities/connectedIds.entity';
 
 @Module({
-  imports: [
-    MongooseModule.forFeature([
-      { name: Chat.name, schema: ChatSchema },
-      { name: Messages.name, schema: MessagesSchema },
-      { name: User.name, schema: UserSchema },
-    ]),
+  imports:[
+    TypeOrmModule.forFeature([User,Chat,ConnectedIds])
   ],
-  providers: [ChatGateway, ChatService, UserService, JwtService],
+  controllers: [ChatController],
+  providers: [ChatService]
 })
 export class ChatModule {}

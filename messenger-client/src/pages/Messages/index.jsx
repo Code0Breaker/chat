@@ -17,9 +17,9 @@ export default function Messages(){
             scrollRef.current.scrollTo(0,scrollRef.current.scrollHeight)
         }
     })
-    // useEffect(()=>{
-    //     socket.emit('join chat',id);
-    // },[id])
+    useEffect(()=>{
+        socket.emit('join chat',id);
+    },[id])
     // console.log(data,'rsdgfdfgsdfg');
     return(
         <Box>

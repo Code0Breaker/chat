@@ -1,22 +1,9 @@
-import {
-  Controller,
-  Get,
-  Post,
-  Body,
-  Patch,
-  Param,
-  Delete,
-  UseGuards,
-  Request,
-} from '@nestjs/common';
+import { Controller, Get, Post, Body, Request, UseGuards } from '@nestjs/common';
 import { UserService } from './user.service';
-import { CreateUserDto } from './dto/create-user.dto';
-import { UpdateUserDto } from './dto/update-user.dto';
+
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
-import { LoginDto, Token } from 'src/chat/dto/login-dto';
-import { JwtStrategy } from './jwt.strategy';
-import { AuthGuard } from '@nestjs/passport';
-import { LocalAuthGuard } from './guards/local-auth.guard';
+import { CreateUserDto } from './dto/create-user.dto';
+import { LoginDto, Token } from './dto/login-dto';
 
 @Controller('user')
 export class UserController {
@@ -43,38 +30,6 @@ export class UserController {
   @UseGuards(JwtAuthGuard)
   @Get('token')
   verifyToken(@Request() req) {
-    console.log(req);
     return this.userService.verifyUser(req.user);
-  }
-
-  // @UseGuards(JwtAuthGuard)
-  @Post('search')
-  search(@Body('text') text) {
-    return this.userService.search(text);
-  }
-
-  @UseGuards(JwtAuthGuard)
-  @Post('allChatList')
-  allChatList(@Body('_id') id) {
-    console.log(id);
-
-    return this.userService.findAll(id);
-  }
-
-  @UseGuards(JwtAuthGuard)
-  @Post('select')
-  selectUser(@Body('_id') id: string[], @Request() req) {
-    return this.userService.find(id, req.user.token._id);
-  }
-
-  @UseGuards(JwtAuthGuard)
-  @Post('createMessage')
-  createMessage(
-    @Request() req,
-    @Body('chatId') chatId,
-    @Body('content') content,
-    @Body('myId') myId,
-  ) {
-    return this.userService.createMessage(chatId, content, myId);
   }
 }

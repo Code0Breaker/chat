@@ -106,13 +106,13 @@ export default function MessageInput(){
   useEffect(()=>{
     socket.on('message recieved',data=>{
       dispatch(setNewMessage(data));
-      // console.log(data);
+      console.log(data);
     })
   },[])
 const send = () =>{
   axios.post('http://localhost:5000/user/createMessage',{chatId:id,content, myId:localStorage._id},{headers:{'Authorization':'Bearer '+localStorage.token}}).then(r=>{
   console.log(r.data);  
-  socket.emit("new message", {...r.data});
+  socket.emit("new message", {...r.data,to:sessionStorage.selectedChat});
   dispatch(setNewMessage(r.data));
     setContent('')
   })

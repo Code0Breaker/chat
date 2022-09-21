@@ -1,4 +1,4 @@
-import * as React from 'react';
+import React, { useState } from 'react';
 import { styled, useTheme } from '@mui/material/styles';
 import Box from '@mui/material/Box';
 import Toolbar from '@mui/material/Toolbar';
@@ -28,11 +28,12 @@ import { useEffect } from 'react';
 const ENDPOINT = "http://127.0.0.1:5000";
 const socket = socketIOClient(ENDPOINT);
 export default function ChatComponent({children}) {
-  const [search, setSearch] = React.useState('')
+  const [search, setSearch] = useState('')
   const theme = useTheme();
   const navigate = useNavigate()
-  const [open, setOpen] = React.useState(false);
-  const [state, setState] = React.useState(null)
+  const [open, setOpen] = useState(false);
+  const [state, setState] = useState(null)
+  const [searchResults, setSearchResults] = useState(null)
   const dispatch = useDispatch()
   const handleDrawerOpen = () => {
     setOpen(true);
@@ -42,20 +43,21 @@ export default function ChatComponent({children}) {
     setOpen(false);
   };
 
-  React.useEffect(()=>{
+  useEffect(()=>{
+    socket.emit("setup", localStorage._id);
     axios.post('http://localhost:5000/user/allChatList', {_id:localStorage._id},{headers:{'Authorization':'Bearer '+ localStorage.token}}).then(r=>{
       setState(r.data)
     })
-
   },[])
 
-  // useEffect(()=>{
-  //   if(search.length>=3){
-  //     axios.post('http://localhost:5000/user/search',{text:search}).then(r=>{
-  //     setState(r.data);
-  //   })
-  //   }
-  // },[search])
+  useEffect(()=>{
+    if(search.length>=3){
+      axios.post('http://localhost:5000/chat/search',{text:search}).then(r=>{
+      console.log(r.data);
+      setSearchResults(r.data);
+    })
+    }
+  },[search])
 
   const selectChat = (selectedUser) =>{
     console.log(selectedUser);
@@ -64,7 +66,20 @@ export default function ChatComponent({children}) {
     // console.log(selectedUser[0]._id);
     axios.post('http://localhost:5000/user/select',{_id:[currentChat._id]},{headers:{'Authorization':'Bearer '+ localStorage.token}}).then(r=>{
       dispatch(setMessages(r.data.messages))
+      socket.emit('join chat', r.data.roomId)
+      navigate(`/chat/${r.data.roomId}`)
+    })
+  
+  }
+
+  const selectChatFromSearch = (selectedUser) =>{
+    console.log(selectedUser);
+    sessionStorage.selectedChat = selectedUser._id
+    // console.log(selectedUser[0]._id);
+    axios.post('http://localhost:5000/user/select',{_id:[selectedUser._id],myId:localStorage._id},{headers:{'Authorization':'Bearer '+ localStorage.token}}).then(r=>{
+      dispatch(setMessages(r.data.messages))
       console.log(r.data);
+      socket.emit('join chat', r.data.roomId)
       navigate(`/chat/${r.data.roomId}`)
     })
   
@@ -108,6 +123,41 @@ export default function ChatComponent({children}) {
         <Divider />
         <Box padding={2}>
         <StyledInput placeholder="Search ..." value={search} onChange={(e)=>setSearch(e.target.value)}/>
+        <Box>
+        <List>
+          {searchResults&&searchResults.map((item) => (
+            <ListItem key={item._id} disablePadding sx={{ display: 'block' }}>
+              <ListItemButton
+                onClick={()=>selectChatFromSearch(item)}
+                sx={{
+                  minHeight: 48,
+                  justifyContent: open ? 'initial' : 'center',
+                  px: 2.5,
+                }}
+              >
+                <ListItemIcon
+                  sx={{
+                    minWidth: 0,
+                    mr: open ? 3 : 'auto',
+                    justifyContent: 'center',
+                  }}
+                >
+                <StyledBadge
+                  overlap="circular"
+                  anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+                  variant="dot"
+                >
+                  <Avatar/>
+                </StyledBadge>
+                </ListItemIcon>
+                      <ListItemText sx={{ opacity: open ? 1 : 0 }}>
+                        {item.fullname}
+                      </ListItemText>
+              </ListItemButton>
+            </ListItem>
+          ))}
+        </List>
+        </Box>
         </Box>
         <List>
           {state&&state.map((item) => (
