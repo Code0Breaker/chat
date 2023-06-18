@@ -16,48 +16,51 @@ export class ChatService {
     @InjectRepository(Chat)
     private chatRepo: Repository<Chat>,
     @InjectRepository(ConnectedIds)
-    private connectedIdsRepo: Repository<ConnectedIds>
-  ){}
-  async search(keyword){
+    private connectedIdsRepo: Repository<ConnectedIds>,
+  ) {}
+  async search(keyword) {
     const data = await this.userRepo.find({
-      where:{
-        fullname:Like(`%${keyword}%`)},
-        select:['_id', 'fullname','email','pic']
-      })
-    return data
+      where: {
+        fullname: Like(`%${keyword}%`),
+      },
+      select: ['_id', 'fullname', 'email', 'pic'],
+    });
+    return data;
   }
 
-  async create(id:string[], myId:string){
-    const users = await this.userRepo.find({where:{_id:In(id)}})
-    // const chatName:string = users.map(item=>item.fullname).join(', ')
-    const forRel = await this.userRepo.find({where:{_id:In([...id,myId])}})
+  async create(id: string[], myId: string) {
+    const users = await this.userRepo.find({ where: { _id: In(id) } });
+    const chatName: string = users.map((item) => item.fullname).join(', ');
+    const forRel = await this.userRepo.find({
+      where: { _id: In([...id, myId]) },
+    });
     const data = await this.chatRepo.save({
       // chatName: chatName,
-      users: forRel
-    })
+      users: forRel,
+    });
     const messages = await this.chatRepo.find({
-      where:{_id:data._id},
-      relations:['messages']
-    })
-    return {roomId:data._id, messages}
+      where: { _id: data._id },
+      relations: ['messages'],
+    });
+    return { roomId: data._id, messages };
   }
 
-  async getRoomsForUser(userId){
+  async getRoomsForUser(userId) {
     const query = await this.chatRepo
       .createQueryBuilder('chat')
       .leftJoin('chat.users', 'users')
       .where('users._id = :userId', { userId })
       .leftJoinAndSelect('chat.users', 'all_users')
       .orderBy('chat.updated_at', 'DESC')
-      .getMany()
-    return query
+      .getMany();
+    return query;
   }
 
-  async findOne(roomId){
+  async findOne(roomId) {
     const data = await this.chatRepo.findOne({
-      where:{_id:roomId},
-      relations:['messages','messages.user']
-    })
-    return data
+      where: { _id: roomId },
+      relations: ['messages', 'messages.user'],
+    });
+    return data;
   }
 }

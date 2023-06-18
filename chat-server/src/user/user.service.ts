@@ -4,21 +4,21 @@ import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
 import { User } from './entities/user.entity';
 import { Like, Repository } from 'typeorm';
-import * as bcrypt from 'bcrypt'
+import * as bcrypt from 'bcrypt';
 @Injectable()
 export class UserService {
   constructor(
     private readonly jwtService: JwtService,
     @InjectRepository(User)
-    private userRepo:Repository<User>
-  ){}
+    private userRepo: Repository<User>,
+  ) {}
 
   async register(body) {
     try {
       const saltOrRounds = 10;
       const hash = await bcrypt.hash(body.password, saltOrRounds);
       const newUser = await this.userRepo.save({ ...body, password: hash });
-    
+
       // return newUser
       return new HttpException(
         {

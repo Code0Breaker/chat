@@ -1,26 +1,41 @@
-import { Chat } from "src/chat/entities/chat.entity";
-import { User } from "src/user/entities/user.entity";
-import { Column, CreateDateColumn, Entity, JoinColumn, JoinTable, ManyToOne, PrimaryGeneratedColumn, UpdateDateColumn } from "typeorm";
+import { Chat } from 'src/chat/entities/chat.entity';
+import { User } from 'src/user/entities/user.entity';
+import {
+  Column,
+  CreateDateColumn,
+  Entity,
+  JoinColumn,
+  JoinTable,
+  ManyToOne,
+  PrimaryGeneratedColumn,
+  UpdateDateColumn,
+} from 'typeorm';
 
 @Entity()
 export class Message {
-    @PrimaryGeneratedColumn('uuid')
-    _id:string
+  @PrimaryGeneratedColumn('uuid')
+  _id: string;
 
-    @Column()
-    content:string
+  @Column()
+  content: string;
 
-    @ManyToOne(() => User, user => user.messages)
-    @JoinColumn()
-    user: User;
+  @Column()
+  sender_id: string;
 
-    @ManyToOne(() => Chat, chat => chat.messages)
-    @JoinTable()
-    chat: Chat;
+  @Column({default:false})
+  isWatched:boolean
 
-    @CreateDateColumn()
-    created_at: Date;
+  @ManyToOne(() => User, (user) => user.messages)
+  @JoinColumn()
+  user: User;
 
-    @UpdateDateColumn()
-    updated_at: Date;
+  @ManyToOne(() => Chat, (chat) => chat.messages)
+  @JoinTable()
+  chat: Chat;
+
+  @CreateDateColumn()
+  created_at: Date;
+
+  @UpdateDateColumn()
+  updated_at: Date;
 }

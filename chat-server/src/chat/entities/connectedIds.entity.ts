@@ -1,11 +1,11 @@
-import { Column, Entity, PrimaryGeneratedColumn } from "typeorm";
+import { Column, Entity, PrimaryGeneratedColumn } from 'typeorm';
 
 @Entity()
-export class ConnectedIds{
-    @PrimaryGeneratedColumn()
-    id:number;
-    @Column()
-    userId:string
-    @Column()
-    chatId:string
+export class ConnectedIds {
+  @PrimaryGeneratedColumn()
+  id: number;
+  @Column()
+  userId: string;
+  @Column()
+  chatId: string;
 }

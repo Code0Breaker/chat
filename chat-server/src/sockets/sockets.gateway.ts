@@ -1,34 +1,38 @@
-import { WebSocketGateway, SubscribeMessage, MessageBody } from '@nestjs/websockets';
-import { SocketsService } from './sockets.service';
-import { CreateSocketDto } from './dto/create-socket.dto';
-import { UpdateSocketDto } from './dto/update-socket.dto';
+import { WebSocketGateway, WebSocketServer, SubscribeMessage, MessageBody, OnGatewayConnection, OnGatewayDisconnect, ConnectedSocket } from '@nestjs/websockets';
+import { Server, Socket } from 'socket.io';
 
-@WebSocketGateway()
-export class SocketsGateway {
-  constructor(private readonly socketsService: SocketsService) {}
+@WebSocketGateway({
+  cors: {
+    origin: '*'
+  }
+})
+export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
+  @WebSocketServer()
+  server: Server;
 
-  @SubscribeMessage('createSocket')
-  create(@MessageBody() createSocketDto: CreateSocketDto) {
-    return this.socketsService.create(createSocketDto);
+  users: { [key: string]: string } = {};
+
+  handleConnection(client: Socket) {
+    // Handle client connection
+    console.log('Client connected: ' + client.id);
   }
 
-  @SubscribeMessage('findAllSockets')
-  findAll() {
-    return this.socketsService.findAll();
+  handleDisconnect(client: Socket) {
+    // Handle client disconnection
+    console.log('Client disconnected: ' + client.id);
+    delete this.users[client.id];
+    this.server.emit('users', Object.values(this.users));
   }
 
-  @SubscribeMessage('findOneSocket')
-  findOne(@MessageBody() id: number) {
-    return this.socketsService.findOne(id);
+  @SubscribeMessage('chat')
+  handleMessage(@MessageBody() message: any, @ConnectedSocket() client: Socket) {
+    console.log(message);
+    
+    this.server.to(message.chat._id).emit('chat', message);
   }
 
-  @SubscribeMessage('updateSocket')
-  update(@MessageBody() updateSocketDto: UpdateSocketDto) {
-    return this.socketsService.update(updateSocketDto.id, updateSocketDto);
-  }
-
-  @SubscribeMessage('removeSocket')
-  remove(@MessageBody() id: number) {
-    return this.socketsService.remove(id);
+  @SubscribeMessage('join')
+  handleJoin(@MessageBody() roomId: string[], @ConnectedSocket() client: Socket) {
+    client.join(roomId);
   }
 }

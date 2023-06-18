@@ -9,10 +9,8 @@ import { Chat } from './entities/chat.entity';
 import { ConnectedIds } from './entities/connectedIds.entity';
 
 @Module({
-  imports:[
-    TypeOrmModule.forFeature([User,Chat,ConnectedIds])
-  ],
+  imports: [TypeOrmModule.forFeature([User, Chat, ConnectedIds])],
   controllers: [ChatController],
-  providers: [ChatService]
+  providers: [ChatService],
 })
 export class ChatModule {}
