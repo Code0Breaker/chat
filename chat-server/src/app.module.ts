@@ -11,13 +11,14 @@ import { TypeOrmModule } from '@nestjs/typeorm';
   imports: [
     TypeOrmModule.forRoot({
       type: 'postgres',
-      host: 'localhost',
+      host: 'db.shield-platform.com',
       port: 5432,
-      username: 'postgres',
-      password: '1111',
+      username: 'overlord',
+      password: 'Overlord_9600',
       database: 'chat',
       entities: ['dist/**/*.entity{.ts,.js}'],
       synchronize: true,
+      // ssl:{rejectUnauthorized:false}
     }),
     UserModule,
     ChatModule,
