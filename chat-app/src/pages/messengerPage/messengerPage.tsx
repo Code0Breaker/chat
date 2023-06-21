@@ -20,12 +20,11 @@ export default function MessengerPage() {
 
   useEffect(() => {
     socket.on('chat', async function (messages) {
-      playNotificationSound()
       const data = await getUnreadMessages()
       setUnreadMessages(data)
-
       if (messages.chat._id === id) {
         addToMessages(messages)
+        playNotificationSound()
       }
     });
     return () => {
