@@ -48,7 +48,7 @@ export default function SignPage() {
                         <span>or use your email for registration</span>
                         <input type="text" placeholder="Name" value={registerCred.fullname} onChange={e => setRegisterCred({ ...registerCred, fullname: e.target.value })} />
                         <input type="email" placeholder="Email" value={registerCred.email} onChange={e => setRegisterCred({ ...registerCred, email: e.target.value })} />
-                        <input type="email" placeholder="Phone" value={registerCred.phone} onChange={e => setRegisterCred({ ...registerCred, phone: e.target.value })} />
+                        <input placeholder="Phone" value={registerCred.phone} onChange={e => setRegisterCred({ ...registerCred, phone: e.target.value })} />
                         <input type="password" placeholder="Password" value={registerCred.password} onChange={e => setRegisterCred({ ...registerCred, password: e.target.value })} />
                         <button onClick={signUp}>Sign Up</button>
                     </form>
