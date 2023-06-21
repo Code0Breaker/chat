@@ -19,17 +19,19 @@
     --button-color: var(--theme-color);
     --detail-font-color: #919ca2;
     --msg-hover-bg: rgba(238, 242, 244, 0.4);
-    --active-conversation-bg: linear-gradient(to right,
-            rgba(238, 242, 244, 0.4) 0%,
-            rgba(238, 242, 244, 0) 100%);
-    --overlay-bg: linear-gradient(to bottom,
-            rgba(255, 255, 255, 0) 0%,
-            rgba(255, 255, 255, 1) 65%,
-            rgba(255, 255, 255, 1) 100%);
-    --chat-header-bg: linear-gradient(to bottom,
-            rgba(255, 255, 255, 1) 0%,
-            rgba(255, 255, 255, 1) 78%,
-            rgba(255, 255, 255, 0) 100%);
+    --active-conversation-bg: linear-gradient(to right, rgba(238, 242, 244, 0.4) 0%, rgba(238, 242, 244, 0) 100%);
+    --overlay-bg: linear-gradient(
+        to bottom,
+        rgba(255, 255, 255, 0) 0%,
+        rgba(255, 255, 255, 1) 65%,
+        rgba(255, 255, 255, 1) 100%
+    );
+    --chat-header-bg: linear-gradient(
+        to bottom,
+        rgba(255, 255, 255, 1) 0%,
+        rgba(255, 255, 255, 1) 78%,
+        rgba(255, 255, 255, 0) 100%
+    );
 }
 
 [data-theme="purple"] {
@@ -55,23 +57,15 @@
     --theme-bg-color: #27292d;
     --border-color: #323336;
     --body-color: #d1d1d2;
-    --active-conversation-bg: linear-gradient(to right,
-            rgba(47, 50, 56, 0.54),
-            rgba(238, 242, 244, 0) 100%);
+    --active-conversation-bg: linear-gradient(to right, rgba(47, 50, 56, 0.54), rgba(238, 242, 244, 0) 100%);
     --msg-hover-bg: rgba(47, 50, 56, 0.54);
     --chat-text-bg: #383b40;
     --chat-text-color: #b5b7ba;
     --msg-date: #626466;
     --msg-message: var(--msg-date);
-    --overlay-bg: linear-gradient(to bottom,
-            rgba(0, 0, 0, 0) 0%,
-            #27292d 65%,
-            #27292d 100%);
+    --overlay-bg: linear-gradient(to bottom, rgba(0, 0, 0, 0) 0%, #27292d 65%, #27292d 100%);
     --input-bg: #2f3236;
-    --chat-header-bg: linear-gradient(to bottom,
-            #27292d 0%,
-            #27292d 78%,
-            rgba(255, 255, 255, 0) 100%);
+    --chat-header-bg: linear-gradient(to bottom, #27292d 0%, #27292d 78%, rgba(255, 255, 255, 0) 100%);
     --settings-icon-color: #7c7e80;
     --developer-color: var(--border-color);
     --button-bg-color: #393b40;
@@ -207,7 +201,7 @@ html {
     margin-left: auto;
     flex-shrink: 0;
 
-    & > *+* {
+    & > * + * {
         margin-left: 14px;
     }
 }
@@ -295,7 +289,7 @@ html {
         bottom: 19px;
     }
 }
-.msg-badage{
+.msg-badage {
     background-color: red;
     position: absolute;
     left: 5px;
@@ -449,7 +443,7 @@ html {
         font-size: 14px;
         font-weight: 500;
 
-        &+& {
+        & + & {
             margin-top: 10px;
         }
     }
@@ -466,7 +460,6 @@ html {
         margin-left: 0;
         margin-right: 12px;
         align-items: flex-end;
-        
     }
 
     & .chat-msg-text {
@@ -510,7 +503,7 @@ html {
         color: var(--settings-icon-hover);
     }
 
-    &+svg {
+    & + svg {
         margin-left: 12px;
     }
 }
@@ -758,7 +751,6 @@ html {
 }
 
 .dark-mode {
-
     .search-bar input,
     .detail-area input {
         background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 56.966 56.966' fill='%236f7073'%3e%3cpath d='M55.146 51.887L41.588 37.786A22.926 22.926 0 0046.984 23c0-12.682-10.318-23-23-23s-23 10.318-23 23 10.318 23 23 23c4.761 0 9.298-1.436 13.177-4.162l13.661 14.208c.571.593 1.339.92 2.162.92.779 0 1.518-.297 2.079-.837a3.004 3.004 0 00.083-4.242zM23.984 6c9.374 0 17 7.626 17 17s-7.626 17-17 17-17-7.626-17-17 7.626-17 17-17z'/%3e%3c/svg%3e");
@@ -782,7 +774,7 @@ html {
         border: 2px solid var(--theme-bg-color);
     }
 
-    *+* {
+    * + * {
         margin-left: -5px;
     }
 
@@ -798,6 +790,41 @@ html {
         font-size: 14px;
         font-weight: 500;
     }
+}
+
+.search-results{
+    background: #fff;
+    margin: 10px 0 0;
+    padding: 0;
+    max-height: 400px;
+    overflow: auto;
+    position: absolute;
+    z-index: 99;
+    border-radius: 5px;
+    box-shadow: 0 6px 12px rgba(0,0,0,.18);
+    top: 50px;
+    /* padding: 10px; */
+}
+
+.search-results p{
+    padding: 10px;
+    transition: all 0.3s;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.search-results p img{
+    width: 30px;
+    height: 30px;
+    object-fit: contain;
+    border-radius: 50px;
+}
+
+.search-results p:hover{
+    background: rgba(0,0,0,.18);
+    transition: all 0.3s;
 }
 
 @media (max-width: 1120px) {

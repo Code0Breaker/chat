@@ -25,3 +25,13 @@ export const chancgeUnwatchStatus = async(ids:string[]) =>{
     const { data } = await base_url.patch(`messages`, {ids},{ headers: { 'Authorization': 'Bearer ' + localStorage.token } })
     return data
 }
+
+export const createRoom = async(selectedId:string)=>{
+    const {data} = await base_url.post('/chat/create-room',{_id: [selectedId], myId:localStorage._id})
+    return data
+}
+
+export const chatSearch = async(text:string)=>{
+    const {data} = await base_url.post('/chat/search',{text})
+    return data
+}

@@ -19,8 +19,7 @@ export default function Contact({ chat }: { chat: IChat }) {
     const data = unreadMessages?.filter(item => item.chat._id === chat._id).sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
     return data
   }
-  console.log(filterUnread());
-
+  
   return (
     <div className={`msg online ${chat._id === id && "active"}`} onClick={() => navigate(chat._id)}>
       {

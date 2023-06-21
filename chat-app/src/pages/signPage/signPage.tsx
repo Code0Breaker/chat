@@ -50,7 +50,7 @@ export default function SignPage() {
                         <input type="email" placeholder="Email" value={registerCred.email} onChange={e => setRegisterCred({ ...registerCred, email: e.target.value })} />
                         <input placeholder="Phone" value={registerCred.phone} onChange={e => setRegisterCred({ ...registerCred, phone: e.target.value })} />
                         <input type="password" placeholder="Password" value={registerCred.password} onChange={e => setRegisterCred({ ...registerCred, password: e.target.value })} />
-                        <button onClick={signUp}>Sign Up</button>
+                        <button onClick={signUp} type='button'>Sign Up</button>
                     </form>
                 </div>
                 <div className="form-container sign-in-container">
@@ -71,7 +71,7 @@ export default function SignPage() {
                         <input type="email" placeholder="Email" value={loginCred.email} onChange={e => setLoginCred({ ...loginCred, email: e.target.value })} />
                         <input type="password" placeholder="Password" value={loginCred.password} onChange={e => setLoginCred({ ...loginCred, password: e.target.value })} />
                         {/* <a href="#">Forgot your password?</a> */}
-                        <button onClick={signIn}>Sign In</button>
+                        <button onClick={signIn} type='button'>Sign In</button>
                     </form>
                 </div>
                 <div className="overlay-container">
