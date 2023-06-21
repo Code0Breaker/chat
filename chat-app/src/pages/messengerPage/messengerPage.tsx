@@ -24,6 +24,7 @@ export default function MessengerPage() {
       setUnreadMessages(data)
       if (messages.chat._id === id) {
         addToMessages(messages)
+      }else{
         playNotificationSound()
       }
     });
