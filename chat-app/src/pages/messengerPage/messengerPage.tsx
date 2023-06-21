@@ -22,11 +22,11 @@ export default function MessengerPage() {
     socket.on('chat', async function (messages) {
       const data = await getUnreadMessages()
       setUnreadMessages(data)
+      playNotificationSound()
+      console.log(data);
       
       if (messages.chat._id === id) {
         addToMessages(messages)
-      }else{
-        playNotificationSound()
       }
     });
     return () => {
