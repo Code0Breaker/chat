@@ -22,9 +22,8 @@ export default function MessengerPage() {
     socket.on('chat', async function (messages) {
       const data = await getUnreadMessages()
       setUnreadMessages(data)
-      console.log(messages);
-      const foundChat = data.find(item=>item.sender_id !== localStorage._id)
-      if(!foundChat){
+  
+      if(messages.sender_id!==localStorage._id){
         playNotificationSound()
       }
 
