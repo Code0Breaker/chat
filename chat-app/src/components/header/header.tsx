@@ -13,11 +13,15 @@ export default function Header() {
   ]);
 
   useEffect(() => {
-    const timeout = setTimeout(async () => {
-      const data = await chatSearch(search);
-      addToSearchData(data);
-    }, 1000);
-    return () => clearTimeout(timeout);
+    if (search !== '') {
+      const timeout = setTimeout(async () => {
+        const data = await chatSearch(search);
+        addToSearchData(data);
+      }, 1000);
+      return () => clearTimeout(timeout);
+    }else{
+      addToSearchData(null)
+    }
   }, [search]);
 
   const selectUser = async (id: string) => {
