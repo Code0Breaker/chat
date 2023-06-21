@@ -22,9 +22,12 @@ export default function MessengerPage() {
     socket.on('chat', async function (messages) {
       const data = await getUnreadMessages()
       setUnreadMessages(data)
-      playNotificationSound()
       console.log(data);
-      
+      const foundChat = data.find(item=>item.user._id === localStorage._id)
+      if(!foundChat){
+        playNotificationSound()
+      }
+
       if (messages.chat._id === id) {
         addToMessages(messages)
       }
