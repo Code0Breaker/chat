@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import Contact from '../contact/contact'
 import { getContacts } from '../../apis/chatApis'
 import { IChat } from '../../types'

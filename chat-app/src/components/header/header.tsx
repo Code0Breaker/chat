@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import { useEffect } from "react";
 import { useStore } from "../../store/store";
 import { chatSearch, createRoom } from "../../apis/chatApis";
 import { useNavigate } from "react-router-dom";

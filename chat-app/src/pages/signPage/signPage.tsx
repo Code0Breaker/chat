@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import { useState } from 'react'
 import './style.css'
 import { useNavigate } from 'react-router-dom'
 import { ILogin, IRegister } from '../../types'
@@ -19,12 +19,12 @@ export default function SignPage() {
     })
 
     const signUp = async() => {
-        const data = await register(registerCred)
+        await register(registerCred)
         setSwitchPanel(false)
     }
 
     const signIn = async() => {
-        const data = await login(loginCred)
+        await login(loginCred)
         navigate('/messenger')
     }
 
