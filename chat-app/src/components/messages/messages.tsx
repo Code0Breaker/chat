@@ -11,6 +11,20 @@ export default function Messages() {
     const [messages, setMessages] = useStore((state)=>[state.messages, state.setMessages])
     const { id } = useParams()
     const [text, setText] = useState('')
+    const [isTyping, setIsTyping] = useState(false)
+
+    useEffect(()=>{
+        socket.on('isTyping',(data)=>{
+            if(id === data.roomId){
+                setIsTyping(true)
+            }
+        })
+
+        const timeout = setTimeout(()=>{
+            setIsTyping(false)
+        },2000)
+        return ()=>clearTimeout(timeout)
+    },[isTyping])
 
     useEffect(() => {
         (async () => {
@@ -18,6 +32,10 @@ export default function Messages() {
             setMessages(data.messages as IMessage[])
         })()
     }, [id])
+
+    useEffect(()=>{
+        socket.emit('isTyping',{roomId:id, typerId:localStorage._id})
+    },[text])
 
     const send = async () => {
         const data = await sendMessage(id as string, text)
@@ -52,6 +70,7 @@ export default function Messages() {
                         )
                     })
                 }  
+                {isTyping&&<p>Typing ...</p>}
             </div>
             <div className="chat-area-footer">
                 <svg

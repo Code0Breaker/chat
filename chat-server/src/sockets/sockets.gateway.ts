@@ -1,10 +1,18 @@
-import { WebSocketGateway, WebSocketServer, SubscribeMessage, MessageBody, OnGatewayConnection, OnGatewayDisconnect, ConnectedSocket } from '@nestjs/websockets';
+import {
+  WebSocketGateway,
+  WebSocketServer,
+  SubscribeMessage,
+  MessageBody,
+  OnGatewayConnection,
+  OnGatewayDisconnect,
+  ConnectedSocket,
+} from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
 
 @WebSocketGateway({
   cors: {
-    origin: '*'
-  }
+    origin: '*',
+  },
 })
 export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer()
@@ -25,14 +33,25 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   }
 
   @SubscribeMessage('chat')
-  handleMessage(@MessageBody() message: any, @ConnectedSocket() client: Socket) {
+  handleMessage(
+    @MessageBody() message: any,
+    @ConnectedSocket() client: Socket,
+  ) {
     console.log(message);
-    
+
     this.server.to(message.chat._id).emit('chat', message);
   }
 
   @SubscribeMessage('join')
-  handleJoin(@MessageBody() roomId: string[], @ConnectedSocket() client: Socket) {
+  handleJoin(
+    @MessageBody() roomId: string[],
+    @ConnectedSocket() client: Socket,
+  ) {
     client.join(roomId);
+  }
+
+  @SubscribeMessage('isTyping')
+  isTyping(@MessageBody() userData) {
+    this.server.to(userData.roomId).emit('isTyping', userData);
   }
 }
