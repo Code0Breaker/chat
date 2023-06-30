@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { selectChat, sendMessage } from '../../apis/chatApis'
 import { IMessage } from '../../types'
@@ -7,15 +7,16 @@ import { socket } from '../../socket'
 import { useStore } from '../../store/store'
 import { timeAgo } from '../../utils/time.utils'
 
-export default function Messages() {
+export default function Messages({id}:{id:string}) {
     const [messages, setMessages] = useStore((state)=>[state.messages, state.setMessages])
-    const { id } = useParams()
     const [text, setText] = useState('')
     const [isTyping, setIsTyping] = useState(false)
 
     useEffect(()=>{
         socket.on('isTyping',(data)=>{
-            if(id === data.roomId){
+            console.log(id, data); // Access the current value of id using id
+            
+            if(id === data.roomId && localStorage._id !== data.typerId){
                 setIsTyping(true)
             }
         })
@@ -23,8 +24,14 @@ export default function Messages() {
         const timeout = setTimeout(()=>{
             setIsTyping(false)
         },2000)
-        return ()=>clearTimeout(timeout)
-    },[isTyping])
+        
+        // Cleanup the event listener properly
+        return () => {
+            // socket.off('isTyping')
+            clearTimeout(timeout)
+            // socket.off('isTyping')
+        }
+    },[socket])
 
     useEffect(() => {
         (async () => {
@@ -34,8 +41,8 @@ export default function Messages() {
     }, [id])
 
     useEffect(()=>{
-        socket.emit('isTyping',{roomId:id, typerId:localStorage._id})
-    },[text])
+        socket.emit('isTyping', { roomId: id, typerId: localStorage._id })
+    },[text, id])
 
     const send = async () => {
         const data = await sendMessage(id as string, text)
