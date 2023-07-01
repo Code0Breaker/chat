@@ -1,5 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
-import { useParams } from 'react-router-dom'
+import { useEffect, useState } from 'react'
 import { selectChat, sendMessage } from '../../apis/chatApis'
 import { IMessage } from '../../types'
 import { SendIcon } from '../../assets/icons/sendIcon'
