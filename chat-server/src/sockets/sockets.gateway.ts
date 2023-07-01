@@ -22,7 +22,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
   handleConnection(@MessageBody() message: any, client: Socket) {
     // Handle client connection
-    console.log('Client connected: ' + client.id,message);
+    // console.log('Client connected: ' + client.id,message);
   }
 
   handleDisconnect(client: Socket) {
