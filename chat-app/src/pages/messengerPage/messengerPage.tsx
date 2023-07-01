@@ -13,17 +13,17 @@ export default function MessengerPage() {
   const scrollRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-      if (scrollRef.current) {
-          scrollRef.current.scrollTo(0, scrollRef.current.scrollHeight)
-      }
+    if (scrollRef.current) {
+      scrollRef.current.scrollTo(0, scrollRef.current.scrollHeight)
+    }
   })
 
   useEffect(() => {
     socket.on('chat', async function (messages) {
       const data = await getUnreadMessages()
       setUnreadMessages(data)
-  
-      if(messages.sender_id!==localStorage._id){
+
+      if (messages.sender_id !== localStorage._id) {
         playNotificationSound()
       }
 
@@ -31,25 +31,27 @@ export default function MessengerPage() {
         addToMessages(messages)
       }
     });
+
     return () => {
       socket.off('chat')
+      socket.off('isTyping')
     }
   }, [socket, id])
 
-  useEffect(()=>{
-    (async()=>{
+  useEffect(() => {
+    (async () => {
       const data = await getUnreadMessages()
       setUnreadMessages(data)
     })()
-  },[])
+  }, [])
 
   function playNotificationSound() {
     const audio = new Audio(newMessageNote);
     audio.play();
   }
 
-  const setWatched = () =>{
-    const ids = unreadMessages?.filter(item=>item.chat._id === id).map(item=>item._id)
+  const setWatched = () => {
+    const ids = unreadMessages?.filter(item => item.chat._id === id).map(item => item._id)
     chancgeUnwatchStatus(ids as string[])
     removeUnreadById(ids as string[])
   }
@@ -58,7 +60,7 @@ export default function MessengerPage() {
     <div className="app">
       <Header />
       <div className="wrapper">
-        <Contacts />
+        <Contacts id={id as string}/>
         <div className="chat-area" ref={scrollRef} onMouseEnter={setWatched}>
           {/* <div className="chat-area-header">
       <div className="chat-area-title">CodePen Group</div>
@@ -81,7 +83,7 @@ export default function MessengerPage() {
         <span>+4</span>
       </div>
     </div> */}
-          <Outlet />
+          <Outlet/>
         </div>
         {/* <div className="detail-area">
     <div className="detail-area-header">

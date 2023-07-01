@@ -476,6 +476,14 @@ html {
     }
 }
 
+.sender{
+    & .chat-msg-content {
+         
+        margin-left: 12px;
+     
+    }
+}
+
 .chat-msg-text img {
     max-width: 300px;
     width: 100%;

@@ -38,6 +38,7 @@ export class UserService {
       if (user) {
         const isMatch = await bcrypt.compare(data.password, user.password);
         if (isMatch) {
+          await this.userRepo.update({_id:user._id},{isOnline:true})
           return {
             token: this.jwtService.sign({
               _id: user._id,

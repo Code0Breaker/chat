@@ -7,31 +7,20 @@ import { socket } from '../../socket'
 import { useStore } from '../../store/store'
 import { timeAgo } from '../../utils/time.utils'
 
-export default function Messages({id}:{id:string}) {
-    const [messages, setMessages] = useStore((state)=>[state.messages, state.setMessages])
+export default function Messages({ id }: { id: string }) {
+    const [messages, setMessages] = useStore((state) => [state.messages, state.setMessages])
     const [text, setText] = useState('')
     const [isTyping, setIsTyping] = useState(false)
+    const [typerId, setTyperId] = useState(null)
+    const [roomId, setRoomId] = useState(null)
 
-    useEffect(()=>{
-        socket.on('isTyping',(data)=>{
-            console.log(id, data); // Access the current value of id using id
-            
-            if(id === data.roomId && localStorage._id !== data.typerId){
-                setIsTyping(true)
-            }
+    useEffect(() => {
+        socket.on('isTyping', (data) => {
+            setTyperId(data.typerId)
+            setRoomId(data.roomId)
+            setIsTyping(true)
         })
-
-        const timeout = setTimeout(()=>{
-            setIsTyping(false)
-        },2000)
-        
-        // Cleanup the event listener properly
-        return () => {
-            // socket.off('isTyping')
-            clearTimeout(timeout)
-            // socket.off('isTyping')
-        }
-    },[socket])
+    }, [socket, id])
 
     useEffect(() => {
         (async () => {
@@ -40,9 +29,16 @@ export default function Messages({id}:{id:string}) {
         })()
     }, [id])
 
-    useEffect(()=>{
+    useEffect(() => {
+        const timeout = setTimeout(() => {
+            setIsTyping(false)
+        }, 2000)
+        return () => clearTimeout(timeout)
+    }, [isTyping])
+
+    useEffect(() => {
         socket.emit('isTyping', { roomId: id, typerId: localStorage._id })
-    },[text, id])
+    }, [text, id])
 
     const send = async () => {
         const data = await sendMessage(id as string, text)
@@ -51,10 +47,10 @@ export default function Messages({id}:{id:string}) {
     return (
         <>
             <div className="chat-area-main">
-                  {
+                {
                     messages?.map(item => {
                         return (
-                            <div className={`chat-msg ${item.sender_id === localStorage._id && "owner"}`} key={item._id}>
+                            <div className={`chat-msg ${item.sender_id === localStorage._id ? "owner":"sender"}`} key={item._id}>
                                 <div className="chat-msg-profile">
                                     <img
                                         className="chat-msg-img"
@@ -62,7 +58,7 @@ export default function Messages({id}:{id:string}) {
                                         alt=""
                                     />
                                     {!timeAgo(item?.created_at).includes('NaN') && <div className="chat-msg-date">{timeAgo(item?.created_at)}</div>}
-                                    
+
                                 </div>
                                 <div className="chat-msg-content">
                                     <div className="chat-msg-text">
@@ -76,8 +72,8 @@ export default function Messages({id}:{id:string}) {
                             </div>
                         )
                     })
-                }  
-                {isTyping&&<p>Typing ...</p>}
+                }
+                {isTyping && typerId !== localStorage._id && id === roomId && <p>Typing</p>}
             </div>
             <div className="chat-area-footer">
                 <svg

@@ -32,6 +32,9 @@ export class User {
   @Column({ default: false, nullable: false })
   isAdmin: boolean;
 
+  @Column({ default: false, nullable: false })
+  isOnline: boolean;
+
   @OneToMany(() => Message, (message) => message.user)
   messages: Message[];
 }

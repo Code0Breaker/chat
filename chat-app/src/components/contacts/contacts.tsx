@@ -3,23 +3,21 @@ import Contact from '../contact/contact'
 import { getContacts } from '../../apis/chatApis'
 import { IChat } from '../../types'
 import { socket } from '../../socket'
-import { useParams } from 'react-router-dom'
 
-export default function Contacts() {
-  const [contacts, setContacts] = useState<null|IChat[]>(null)
-  const {id} = useParams()
+export default function Contacts({ id }: { id: string }) {
+  const [contacts, setContacts] = useState<null | IChat[]>(null)
+
   useEffect(() => {
-    // socket.emit("setup", localStorage._id);
-    (async()=>{
+    (async () => {
       const data = await getContacts()
-      socket.emit('join', data.map(item=>(item._id)));
+      socket.emit('join', data.map(item => (item._id)));
       setContacts(data)
-
     })()
   }, [id])
+
   return (
     <div className="conversation-area">
-      {contacts?.map(item=><Contact chat={item} key={item._id}/>)}
+      {contacts?.map(item => <Contact chat={item} id={id} key={item._id} />)}
       <button className="add" />
       <div className="overlay" />
     </div>
