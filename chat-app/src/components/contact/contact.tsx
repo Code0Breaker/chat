@@ -37,7 +37,8 @@ export default function Contact({ chat, id }: { chat: IChat, id: string }) {
   }
 
   return (
-    <div className={`msg online ${chat._id === id && "active"}`} onClick={() => navigate(chat._id)}>
+    <div className={`msg ${chat._id === id && "active"}`} onClick={() => navigate(chat._id)}>
+      {/* online */}
       {
         filterFriends(chat?.users)?.map(item => {
           return (

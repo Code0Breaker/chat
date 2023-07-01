@@ -20,9 +20,9 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
   users: { [key: string]: string } = {};
 
-  handleConnection(client: Socket) {
+  handleConnection(@MessageBody() message: any, client: Socket) {
     // Handle client connection
-    console.log('Client connected: ' + client.id);
+    console.log('Client connected: ' + client.id,message);
   }
 
   handleDisconnect(client: Socket) {

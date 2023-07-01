@@ -19,6 +19,7 @@ export default function MessengerPage() {
   })
 
   useEffect(() => {
+    socket.emit('connection',localStorage._id)
     socket.on('chat', async function (messages) {
       const data = await getUnreadMessages()
       setUnreadMessages(data)

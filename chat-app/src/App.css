@@ -154,6 +154,7 @@ html {
 
 .chat-area {
     flex-grow: 1;
+    margin-bottom: 62px;
 }
 
 .search-bar {
@@ -492,13 +493,13 @@ html {
 .chat-area-footer {
     display: flex;
     border-top: 1px solid var(--border-color);
-    width: 100%;
+    width: calc(100% - 340px);
     padding: 10px 20px;
     align-items: center;
     background-color: var(--theme-bg-color);
-    position: sticky;
+    position: fixed;
     bottom: 0;
-    left: 0;
+    /* left: 0; */
 }
 
 .chat-area-footer svg {
@@ -835,6 +836,11 @@ html {
     transition: all 0.3s;
 }
 
+.send-btn{
+    background: none;
+    border: none;
+}
+
 @media (max-width: 1120px) {
     .detail-area {
         display: none;
@@ -845,7 +851,11 @@ html {
     .conversation-area {
         display: none;
     }
+    .chat-area-footer {
+ 
+        width:100%;
 
+    }
     .search-bar {
         margin-left: 0;
         flex-grow: 1;
