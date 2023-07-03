@@ -102,7 +102,7 @@ export const VideoCall = ({ setOpenVideoCall, openVideoCall, id }: { setOpenVide
   return (
     <>
       {incomingCall && <button onClick={answerCall}>answer</button>}
-      {openVideoCall && <div className="video-layout">
+      {openVideoCall||callAccepted && <div className="video-layout">
         <div className="close-video-call" onClick={() => setOpenVideoCall(false)}>close</div>
         <button onClick={callUser}>call</button>
         <button onClick={leaveCall}>leave call</button>
