@@ -5,6 +5,7 @@ import { SendIcon } from '../../assets/icons/sendIcon'
 import { socket } from '../../socket'
 import { useStore } from '../../store/store'
 import { timeAgo } from '../../utils/time.utils'
+import { VideoCall } from '../videoCall/videoCall'
 
 export default function Messages({ id }: { id: string }) {
     const [messages, setMessages] = useStore((state) => [state.messages, state.setMessages])
@@ -12,7 +13,7 @@ export default function Messages({ id }: { id: string }) {
     const [isTyping, setIsTyping] = useState(false)
     const [typerId, setTyperId] = useState(null)
     const [roomId, setRoomId] = useState(null)
-
+    const [openVideoCall, setOpenVideoCall] = useState(false)
     useEffect(() => {
         socket.on('isTyping', (data) => {
             setTyperId(data.typerId)
@@ -74,7 +75,9 @@ export default function Messages({ id }: { id: string }) {
                 }
                 {isTyping && typerId !== localStorage._id && id === roomId && <p>Typing</p>}
             </div>
+                <VideoCall setOpenVideoCall={setOpenVideoCall} openVideoCall={openVideoCall} id={id}/>
             <div className="chat-area-footer">
+                <button className='send-btn' onClick={()=>setOpenVideoCall(true)}>
                 <svg
                     xmlns="http://www.w3.org/2000/svg"
                     viewBox="0 0 24 24"
@@ -88,6 +91,7 @@ export default function Messages({ id }: { id: string }) {
                     <path d="M23 7l-7 5 7 5V7z" />
                     <rect x={1} y={5} width={15} height={14} rx={2} ry={2} />
                 </svg>
+                </button>
                 <svg
                     xmlns="http://www.w3.org/2000/svg"
                     viewBox="0 0 24 24"

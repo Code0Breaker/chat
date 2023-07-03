@@ -54,4 +54,30 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   isTyping(@MessageBody() userData) {
     this.server.to(userData.roomId).emit('isTyping', userData);
   }
+
+  @SubscribeMessage('callUser')
+  handleCallUser(
+    @MessageBody() callData: any,
+    @ConnectedSocket() client: Socket,
+  ) {
+     console.log(callData,'=============');
+     client.broadcast.to(callData.roomId).emit('reciveCall',callData)
+  }
+
+  @SubscribeMessage('answerCall')
+  handleAnswerCall(
+    @MessageBody() callData: {
+
+      signal:{type:string,sdp:string},
+      to:{
+      name: string;
+      id: string;
+      roomId: string;
+      }
+  },
+    @ConnectedSocket() client: Socket,
+  ) {
+     console.log(callData,'=============callAccepted');
+     client.broadcast.to(callData.to.roomId).emit('callAccepted',callData.signal)
+  }
 }

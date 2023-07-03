@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import Header from '../../components/header/header'
 import Contacts from '../../components/contacts/contacts'
 import { Outlet, useParams } from 'react-router-dom'
@@ -11,7 +11,7 @@ export default function MessengerPage() {
   const [addToMessages] = useStore((state) => [state.addToMessages])
   const [unreadMessages, removeUnreadById, setUnreadMessages] = useStore((state) => [state.unreadMessages, state.removeUnreadById, state.setUnreadMessages])
   const scrollRef = useRef<HTMLDivElement>(null)
-
+  const [callSignal, setCallSignal] = useState(false)
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTo(0, scrollRef.current.scrollHeight)
@@ -19,7 +19,7 @@ export default function MessengerPage() {
   })
 
   useEffect(() => {
-    socket.emit('connection',localStorage._id)
+    socket.emit('connection', localStorage._id)
     socket.on('chat', async function (messages) {
       const data = await getUnreadMessages()
       setUnreadMessages(data)
@@ -33,9 +33,12 @@ export default function MessengerPage() {
       }
     });
 
+
+
     return () => {
       socket.off('chat')
       socket.off('isTyping')
+      socket.off('reciveCall')
     }
   }, [socket, id])
 
@@ -61,7 +64,7 @@ export default function MessengerPage() {
     <div className="app">
       <Header />
       <div className="wrapper">
-        <Contacts id={id as string}/>
+        <Contacts id={id as string} />
         <div className="chat-area" ref={scrollRef} onMouseEnter={setWatched}>
           {/* <div className="chat-area-header">
       <div className="chat-area-title">CodePen Group</div>
@@ -84,7 +87,7 @@ export default function MessengerPage() {
         <span>+4</span>
       </div>
     </div> */}
-          <Outlet/>
+          <Outlet />
         </div>
         {/* <div className="detail-area">
     <div className="detail-area-header">

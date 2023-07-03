@@ -1,0 +1,1 @@
+declare module 'simple-peer/simplepeer.min.js';

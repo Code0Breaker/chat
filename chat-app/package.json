@@ -11,17 +11,20 @@
   },
   "dependencies": {
     "axios": "^1.4.0",
+    "browserify": "^17.0.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-router-dom": "^6.13.0",
     "sass": "^1.63.4",
     "scss": "^0.2.4",
+    "simple-peer": "^9.11.1",
     "socket.io-client": "^4.6.2",
     "zustand": "^4.3.8"
   },
   "devDependencies": {
     "@types/react": "^18.2.12",
     "@types/react-dom": "^18.0.11",
+    "@types/simple-peer": "^9.11.5",
     "@typescript-eslint/eslint-plugin": "^5.59.0",
     "@typescript-eslint/parser": "^5.59.0",
     "@vitejs/plugin-react-swc": "^3.0.0",
