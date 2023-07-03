@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef } from 'react'
 import Header from '../../components/header/header'
 import Contacts from '../../components/contacts/contacts'
 import { Outlet, useParams } from 'react-router-dom'
@@ -11,7 +11,7 @@ export default function MessengerPage() {
   const [addToMessages] = useStore((state) => [state.addToMessages])
   const [unreadMessages, removeUnreadById, setUnreadMessages] = useStore((state) => [state.unreadMessages, state.removeUnreadById, state.setUnreadMessages])
   const scrollRef = useRef<HTMLDivElement>(null)
-  const [callSignal, setCallSignal] = useState(false)
+  // const [callSignal, setCallSignal] = useState(false)
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTo(0, scrollRef.current.scrollHeight)

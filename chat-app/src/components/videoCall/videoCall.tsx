@@ -95,6 +95,8 @@ export const VideoCall = ({ setOpenVideoCall, openVideoCall, id }: { setOpenVide
 
   const leaveCall = () =>{
     // setCallEnded(false)
+    console.log(callAccepted);
+    
     connectionRef.current.destroy()
   }
   return (
@@ -103,6 +105,7 @@ export const VideoCall = ({ setOpenVideoCall, openVideoCall, id }: { setOpenVide
       {openVideoCall && <div className="video-layout">
         <div className="close-video-call" onClick={() => setOpenVideoCall(false)}>close</div>
         <button onClick={callUser}>call</button>
+        <button onClick={leaveCall}>leave call</button>
         <div className="video-call">
           <video playsInline ref={videoRef} muted autoPlay style={{ width: "300px", height: 300 }} />
           <video playsInline ref={userVideoRef} autoPlay style={{ width: "300px", height: 300 }} />
