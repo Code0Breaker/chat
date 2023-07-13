@@ -49,30 +49,30 @@ export const VideoCall = ({ setOpenVideoCall, openVideoCall, id }: { setOpenVide
   }
 
   const callUser = () => {
-    const peer = new Peer({
-      initiator: true,
-      trickle: false,
-      stream: stream
-    })
+    // const peer = new Peer({
+    //   initiator: true,
+    //   trickle: false,
+    //   stream: stream
+    // })
 
-    peer.on('signal', (data: any) => {
-      socket.emit('callUser', {
-        roomId: id,
-        signalData: data,
-        from: { name: localStorage.fullname, id: localStorage._id }
-      })
-    })
+    // peer.on('signal', (data: any) => {
+    //   socket.emit('callUser', {
+    //     roomId: id,
+    //     signalData: data,
+    //     from: { name: localStorage.fullname, id: localStorage._id }
+    //   })
+    // })
 
-    peer.on('stream', (stream: any) => {
-      userVideoRef.current.srcObject = stream
-    })
+    // peer.on('stream', (stream: any) => {
+    //   userVideoRef.current.srcObject = stream
+    // })
 
-    socket.on("callAccepted", (signal) => {
-      setCallAccepted(true)
-      peer.signal(signal)
-    })
+    // socket.on("callAccepted", (signal) => {
+    //   setCallAccepted(true)
+    //   peer.signal(signal)
+    // })
 
-    connectionRef.current = peer
+    // connectionRef.current = peer
   }
 
   const answerCall = () => {

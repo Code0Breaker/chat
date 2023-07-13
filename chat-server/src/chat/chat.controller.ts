@@ -34,6 +34,11 @@ export class ChatController {
     return this.chatService.getRoomsForUser(myId);
   }
 
+  @Get('getChat/:id')
+  getChat(@Param('id') roomId: string) {
+    return this.chatService.getChat(roomId);
+  }
+
   @Get('getMessages/:id')
   getMessages(@Param('id') id) {
     return this.chatService.findOne(id);

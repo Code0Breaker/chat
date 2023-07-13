@@ -1,3 +1,4 @@
+import { Exclude } from 'class-transformer';
 import { Chat } from 'src/chat/entities/chat.entity';
 import { Message } from 'src/messages/entities/message.entity';
 import {
@@ -20,7 +21,7 @@ export class User {
   @Column({ unique: true })
   email: string;
 
-  @Column({ nullable: true })
+  @Column({ nullable: true, select:false })
   password: string;
 
   @Column({

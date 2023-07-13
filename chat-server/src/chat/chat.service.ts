@@ -7,6 +7,7 @@ import { CreateChatDto } from './dto/create-chat.dto';
 import { UpdateChatDto } from './dto/update-chat.dto';
 import { Chat } from './entities/chat.entity';
 import { ConnectedIds } from './entities/connectedIds.entity';
+import { classToPlain } from 'class-transformer';
 
 @Injectable()
 export class ChatService {
@@ -45,7 +46,7 @@ export class ChatService {
     return { roomId: data._id, messages };
   }
 
-  async getRoomsForUser(userId) {
+  async getRoomsForUser(userId:string) {
     const query = await this.chatRepo
       .createQueryBuilder('chat')
       .leftJoin('chat.users', 'users')
@@ -53,7 +54,13 @@ export class ChatService {
       .leftJoinAndSelect('chat.users', 'all_users')
       .orderBy('chat.updated_at', 'DESC')
       .getMany();
-    return query;
+
+      return query;
+  }
+
+  async getChat(userId:string){
+    const data = await this.chatRepo.findOne({where:{_id:userId},relations:['users']})
+    return data
   }
 
   async findOne(roomId) {

@@ -6,6 +6,11 @@ export const getContacts = async (): Promise<IChat[]> => {
     return data
 }
 
+export const getChat = async (roomId:string): Promise<IChat> => {
+    const { data } = await base_url.get(`chat/getChat/${roomId}`, { headers: { 'Authorization': 'Bearer ' + localStorage.token } })
+    return data
+}
+
 export const selectChat = async (selectedRoom: string): Promise<IChat> => {
     const { data } = await base_url.get('chat/getMessages/' + selectedRoom, { headers: { 'Authorization': 'Bearer ' + localStorage.token } })
     return data

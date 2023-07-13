@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import Header from '../../components/header/header'
 import Contacts from '../../components/contacts/contacts'
 import { Outlet, useParams } from 'react-router-dom'
@@ -6,11 +6,17 @@ import { socket } from '../../socket'
 import { useStore } from '../../store/store'
 import { chancgeUnwatchStatus, getUnreadMessages } from '../../apis/chatApis'
 import newMessageNote from '../../assets/new-message.wav'
+import { Caller } from '../../components/caller/caller'
 export default function MessengerPage() {
   const { id } = useParams()
   const [addToMessages] = useStore((state) => [state.addToMessages])
+  const [setStream] = useStore((state) => [state.setStream])
   const [unreadMessages, removeUnreadById, setUnreadMessages] = useStore((state) => [state.unreadMessages, state.removeUnreadById, state.setUnreadMessages])
+  const [incomingCall, setIncomingCall] = useState(false)
+  const [caller, setCaller] = useState<{ name: string, id: string, roomId: string } | null>(null)
+  const [callerSignal, setCallerSignal] = useState<any>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
+  const [open, setOpen] = useState(false)
   // const [callSignal, setCallSignal] = useState(false)
   useEffect(() => {
     if (scrollRef.current) {
@@ -33,6 +39,13 @@ export default function MessengerPage() {
       }
     });
 
+    socket.on('reciveCall', (data) => {
+
+      setIncomingCall(true)
+      setCaller({ ...data.from, roomId: data.roomId })
+      setCallerSignal(data.signalData)
+
+    })
 
 
     return () => {
@@ -63,6 +76,8 @@ export default function MessengerPage() {
   return (
     <div className="app">
       <Header />
+      {incomingCall&&caller&&<Caller caller={caller} callerSignal={callerSignal}/>}
+      {}
       <div className="wrapper">
         <Contacts id={id as string} />
         <div className="chat-area" ref={scrollRef} onMouseEnter={setWatched}>

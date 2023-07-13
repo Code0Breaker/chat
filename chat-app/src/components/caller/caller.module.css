@@ -1,0 +1,9 @@
+.caller{
+    position: absolute;
+    padding: 30px;
+    background: rgb(139, 134, 134);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-direction: column;
+}

@@ -33,7 +33,7 @@ export class UserService {
   }
 
   async login(data: LoginDto) {
-    const user = await this.userRepo.findOneBy({ email: data.email });
+    const user = await this.userRepo.findOne({ where:{email: data.email}, select:['password','_id','email','fullname','pic'] });
     try {
       if (user) {
         const isMatch = await bcrypt.compare(data.password, user.password);

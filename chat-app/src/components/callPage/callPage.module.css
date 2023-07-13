@@ -1,0 +1,23 @@
+* {
+    margin: 0;
+}
+
+.call {
+    width: 100vw;
+    height: 100vh;
+    background-color: black;
+    display: flex;
+    justify-content: center;
+}
+
+.callActions{
+    width: calc(100vw - 200px);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 80px;
+    border-radius: 60px;
+    position: absolute;
+    bottom: 10px;
+    background-color: gray;
+}

@@ -3,6 +3,7 @@ import './App.css'
 import MessengerPage from './pages/messengerPage/messengerPage'
 import SignPage from './pages/signPage/signPage'
 import Messages from './components/messages/messages'
+import CallPage from './components/callPage/callPage'
 
 function App() {
 
@@ -17,7 +18,8 @@ function App() {
           element:<MessagesWrapper/>
         }
       ]
-    }
+    },
+
   ])
   return routes
 }

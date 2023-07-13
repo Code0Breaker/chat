@@ -6,14 +6,17 @@ import { socket } from '../../socket'
 import { useStore } from '../../store/store'
 import { timeAgo } from '../../utils/time.utils'
 import { VideoCall } from '../videoCall/videoCall'
+import { url } from '../../apis/baseUrl'
+import { useNavigate } from 'react-router-dom'
 
 export default function Messages({ id }: { id: string }) {
     const [messages, setMessages] = useStore((state) => [state.messages, state.setMessages])
+    const navigate = useNavigate()
     const [text, setText] = useState('')
     const [isTyping, setIsTyping] = useState(false)
     const [typerId, setTyperId] = useState(null)
     const [roomId, setRoomId] = useState(null)
-    const [openVideoCall, setOpenVideoCall] = useState(false)
+    
     useEffect(() => {
         socket.on('isTyping', (data) => {
             setTyperId(data.typerId)
@@ -43,6 +46,11 @@ export default function Messages({ id }: { id: string }) {
     const send = async () => {
         const data = await sendMessage(id as string, text)
         socket.emit("chat", data);
+    }
+
+    const setOpenVideoCall = () =>{
+        navigate(`/call/${id}`)
+      
     }
     return (
         <>
@@ -75,9 +83,9 @@ export default function Messages({ id }: { id: string }) {
                 }
                 {isTyping && typerId !== localStorage._id && id === roomId && <p>Typing</p>}
             </div>
-                <VideoCall setOpenVideoCall={setOpenVideoCall} openVideoCall={openVideoCall} id={id}/>
+                {/* <VideoCall setOpenVideoCall={setOpenVideoCall} openVideoCall={openVideoCall} id={id}/> */}
             <div className="chat-area-footer">
-                <button className='send-btn' onClick={()=>setOpenVideoCall(true)}>
+                <button className='send-btn' onClick={setOpenVideoCall}>
                 <svg
                     xmlns="http://www.w3.org/2000/svg"
                     viewBox="0 0 24 24"

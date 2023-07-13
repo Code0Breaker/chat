@@ -6,6 +6,11 @@ interface Store {
   unreadMessages: any[] | null;
   search: string;
   searchData: IUser[] | null;
+  stream:null|MediaStream;
+  usersStream:MediaStream[]|null
+  setUsersStream:(state:MediaStream)=>void
+  peerConnection:any;
+  setPeerConnection:(state:any)=>void;
   setSearch: (state: string) => void;
   setMessages: (state: IMessage[]) => void;
   addToMessages: (state: IMessage) => void;
@@ -13,6 +18,7 @@ interface Store {
   addToUnreadMessages: (state: IMessage) => void;
   addToSearchData:(state:IUser[]|null)=>void
   removeUnreadById: (state: string[]) => void;
+  setStream:(state:MediaStream)=>void
 }
 
 export const useStore = create<Store>((set) => ({
@@ -20,6 +26,14 @@ export const useStore = create<Store>((set) => ({
   unreadMessages: null,
   search: "",
   searchData: null,
+  stream:null,
+  usersStream:null,
+  setUsersStream:(stream)=>set((state)=>({
+    usersStream:Array.isArray(state.usersStream)?[...state.usersStream,stream]:[stream]
+  })),
+  setPeerConnection:(peerConnection)=>set(()=>({peerConnection})),
+  peerConnection:null,
+  setStream: (stream) => set(()=>({stream})),
   setMessages: (newState) => set(() => ({ messages: newState })),
   addToMessages: (newState) =>
     set((state) => ({
