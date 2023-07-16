@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import Header from '../../components/header/header'
 import Contacts from '../../components/contacts/contacts'
-import { Outlet, useParams } from 'react-router-dom'
+import { Outlet, useNavigate, useParams } from 'react-router-dom'
 import { socket } from '../../socket'
 import { useStore, userMediaStream } from '../../store/store'
 import { chancgeUnwatchStatus, getUnreadMessages } from '../../apis/chatApis'
@@ -10,6 +10,7 @@ import { Caller } from '../../components/caller/caller'
 import CallPage from '../callPage/callPage'
 export default function MessengerPage() {
   const { id } = useParams()
+  const navigate = useNavigate()
   const [addToMessages] = useStore((state) => [state.addToMessages])
   const [setStream] = useStore((state) => [state.setStream])
   const [unreadMessages, removeUnreadById, setUnreadMessages] = useStore((state) => [state.unreadMessages, state.removeUnreadById, state.setUnreadMessages])
@@ -45,7 +46,7 @@ export default function MessengerPage() {
         setIncomingCall(true)
         // userMediaStream.postMessage({...data.from, roomId: data.roomId, signalData: data.signalData})
         sessionStorage.signalData = JSON.stringify({...data.from, roomId: data.roomId, signalData: data.signalData});
-        window.open(`/call/${data.roomId}`,'','popup')
+        navigate(`/call/${data.roomId}`)
         // userMediaStream.onmessage = ev =>{
           
         // }

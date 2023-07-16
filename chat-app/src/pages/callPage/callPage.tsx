@@ -15,6 +15,9 @@ const CallPage = () => {
   const [answered, setAnswered] = useState(false)
   const [caller, setCaller] = useState<{ name: string, id: string, roomId: string } | null>(null)
   const [callerSignal, setCallerSignal] = useState<any>(null)
+  const myVideo = useRef<HTMLVideoElement|null>(null)
+	const userVideo = useRef<HTMLVideoElement|null>(null)
+	const connectionRef= useRef()
   //   const currentUserVideoRef = useRef<any>();
   const { id } = useParams();
 
@@ -37,14 +40,16 @@ const CallPage = () => {
             video: videoDevices.length > 0,
             audio: audioDevices.length > 0,
           })
-          .then((stream) => {
+          .then((stream:MediaStream) => {
             setStream(stream);
-
+            if (myVideo.current && myVideo.current.srcObject !== stream) {
+              myVideo.current.srcObject = stream;
+            }
             if(sessionStorage.signalData){
               const data = JSON.parse(sessionStorage.signalData)
               setCaller({name:data.name,id:data.id,roomId:data.roomId})
               setCallerSignal(data.signalData)
-              console.log(JSON.parse(sessionStorage.signalData));
+              console.log(data);
               // setUsersStream(data.signalData)
             }
 
@@ -58,6 +63,7 @@ const CallPage = () => {
 
     })();
   }, []);
+console.log(caller,callerSignal);
 
   const callUser = () => {
     const peer = new Peer({
@@ -75,7 +81,10 @@ const CallPage = () => {
     })
 
     peer.on('stream', (stream: MediaStream) => {
-      setUsersStream(stream)
+      // setUsersStream(stream)
+      if (userVideo.current) {
+        userVideo.current.srcObject = stream;
+      }
     })
 
     socket.on("callAccepted", (signal) => {
@@ -86,7 +95,8 @@ const CallPage = () => {
     })
     console.log(peer);
 
-    setPeerConnection(peer)
+    // setPeerConnection(peer)
+    connectionRef.current = peer
   }
 
   const answerCall = () => {
@@ -104,12 +114,16 @@ const CallPage = () => {
     })
 
     peer.on("stream", (stream: MediaStream) => {
-      setUsersStream(stream)
+      if (userVideo.current) {
+        userVideo.current.srcObject = stream;
+      }
+      // setUsersStream(stream)
       //   userVideoRef.current.srcObject = stream
     })
 
     peer.signal(callerSignal)
-    setPeerConnection(peer)
+    connectionRef.current = peer
+    // setPeerConnection(peer)
     // window.open(`/call/${caller.roomId}`,'','popup')
     // setOpen(true)
     setAnswered(true)
@@ -127,22 +141,24 @@ console.log(usersStream);
           </div>
           :
           <div className={s.call}>
-            <video
+            {stream&&myVideo&&<video playsInline muted ref={myVideo} autoPlay style={{ width: "300px" }} />}
+            {userVideo&&<video playsInline ref={userVideo} autoPlay style={{ width: "300px"}} />}
+            {/* <video
               playsInline
               ref={e => e && (e.srcObject = stream)}
               muted
               autoPlay
               style={{ width: "300px", height: 300, position: 'absolute', top: 0 }}
-            />
-            {
+            /> */}
+                 {/* {usersStream&& <div >
+                    <video ref={e => e && (e.srcObject = usersStream[0])} autoPlay playsInline style={{ width: "300px", height: 300 }} />
+                  </div>} */}
+            {/* {
               usersStream?.map((item, index) => {
                 return (
-                  <div key={index}>
-                    <video ref={e => e && (e.srcObject = item)} autoPlay playsInline style={{ width: "300px", height: 300 }} />
-                  </div>
                 )
               })
-            }
+            } */}
             <div className={s.callActions}>
               <button onClick={callUser}>call</button>
             </div>
