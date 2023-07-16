@@ -3,8 +3,8 @@ import './App.css'
 import MessengerPage from './pages/messengerPage/messengerPage'
 import SignPage from './pages/signPage/signPage'
 import Messages from './components/messages/messages'
-import CallPage from './components/callPage/callPage'
-
+import CallPage from './pages/callPage/callPage'
+ 
 function App() {
 
   const routes = useRoutes([

@@ -21,6 +21,8 @@ interface Store {
   setStream:(state:MediaStream)=>void
 }
 
+export const userMediaStream = new BroadcastChannel('userMediaStream')
+
 export const useStore = create<Store>((set) => ({
   messages: null,
   unreadMessages: null,

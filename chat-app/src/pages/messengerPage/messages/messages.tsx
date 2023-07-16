@@ -1,22 +1,21 @@
 import { useEffect, useState } from 'react'
-import { selectChat, sendMessage } from '../../apis/chatApis'
-import { IMessage } from '../../types'
-import { SendIcon } from '../../assets/icons/sendIcon'
-import { socket } from '../../socket'
-import { useStore } from '../../store/store'
-import { timeAgo } from '../../utils/time.utils'
-import { VideoCall } from '../videoCall/videoCall'
-import { url } from '../../apis/baseUrl'
-import { useNavigate } from 'react-router-dom'
+import { selectChat, sendMessage } from '../../../apis/chatApis'
+import { IMessage } from '../../../types'
+import { SendIcon } from '../../../assets/icons/sendIcon'
+import { socket } from '../../../socket'
+import { useStore } from '../../../store/store'
+import { timeAgo } from '../../../utils/time.utils'
+import { VideoCall } from '../../../components/videoCall/videoCall'
 
 export default function Messages({ id }: { id: string }) {
     const [messages, setMessages] = useStore((state) => [state.messages, state.setMessages])
-    const navigate = useNavigate()
     const [text, setText] = useState('')
     const [isTyping, setIsTyping] = useState(false)
     const [typerId, setTyperId] = useState(null)
     const [roomId, setRoomId] = useState(null)
-    
+    const [openVideoCall, setOpenVideoCall] = useState(false)
+    const [callAccepted, setCallAccepted] = useState(false)
+
     useEffect(() => {
         socket.on('isTyping', (data) => {
             setTyperId(data.typerId)
@@ -47,17 +46,13 @@ export default function Messages({ id }: { id: string }) {
         const data = await sendMessage(id as string, text)
         socket.emit("chat", data);
     }
-
-    const setOpenVideoCall = () =>{
-        window.open(`/call/${id}`,'','popup')
-    }
     return (
         <>
             <div className="chat-area-main">
                 {
                     messages?.map(item => {
                         return (
-                            <div className={`chat-msg ${item.sender_id === localStorage._id ? "owner":"sender"}`} key={item._id}>
+                            <div className={`chat-msg ${item.sender_id === localStorage._id ? "owner" : "sender"}`} key={item._id}>
                                 <div className="chat-msg-profile">
                                     <img
                                         className="chat-msg-img"
@@ -82,22 +77,22 @@ export default function Messages({ id }: { id: string }) {
                 }
                 {isTyping && typerId !== localStorage._id && id === roomId && <p>Typing</p>}
             </div>
-           
+            {/* {callAccepted||openVideoCall&&<VideoCall setOpenVideoCall={setOpenVideoCall} openVideoCall={openVideoCall} callAccepted={callAccepted} setCallAccepted={setCallAccepted} id={id} />} */}
             <div className="chat-area-footer">
-                <button className='send-btn' onClick={setOpenVideoCall}>
-                <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="1.5"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    className="feather feather-video"
-                >
-                    <path d="M23 7l-7 5 7 5V7z" />
-                    <rect x={1} y={5} width={15} height={14} rx={2} ry={2} />
-                </svg>
+                <button className='send-btn' onClick={() => setOpenVideoCall(true)}>
+                    <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="1.5"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        className="feather feather-video"
+                    >
+                        <path d="M23 7l-7 5 7 5V7z" />
+                        <rect x={1} y={5} width={15} height={14} rx={2} ry={2} />
+                    </svg>
                 </button>
                 <svg
                     xmlns="http://www.w3.org/2000/svg"

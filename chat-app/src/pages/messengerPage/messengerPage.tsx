@@ -3,10 +3,11 @@ import Header from '../../components/header/header'
 import Contacts from '../../components/contacts/contacts'
 import { Outlet, useParams } from 'react-router-dom'
 import { socket } from '../../socket'
-import { useStore } from '../../store/store'
+import { useStore, userMediaStream } from '../../store/store'
 import { chancgeUnwatchStatus, getUnreadMessages } from '../../apis/chatApis'
 import newMessageNote from '../../assets/new-message.wav'
 import { Caller } from '../../components/caller/caller'
+import CallPage from '../callPage/callPage'
 export default function MessengerPage() {
   const { id } = useParams()
   const [addToMessages] = useStore((state) => [state.addToMessages])
@@ -40,11 +41,17 @@ export default function MessengerPage() {
     });
 
     socket.on('reciveCall', (data) => {
-
-      setIncomingCall(true)
-      setCaller({ ...data.from, roomId: data.roomId })
-      setCallerSignal(data.signalData)
-
+      if(data.from.id!==localStorage._id){
+        setIncomingCall(true)
+        // userMediaStream.postMessage({...data.from, roomId: data.roomId, signalData: data.signalData})
+        sessionStorage.signalData = JSON.stringify({...data.from, roomId: data.roomId, signalData: data.signalData});
+        window.open(`/call/${data.roomId}`,'','popup')
+        // userMediaStream.onmessage = ev =>{
+          
+        // }
+        // setCaller({ ...data.from, roomId: data.roomId })
+        // setCallerSignal(data.signalData)
+      }
     })
 
 
@@ -76,11 +83,11 @@ export default function MessengerPage() {
   return (
     <div className="app">
       <Header />
-      {incomingCall&&caller&&<Caller caller={caller} callerSignal={callerSignal}/>}
-      {}
+      {incomingCall && caller && <Caller caller={caller} callerSignal={callerSignal} setOpen={setOpen} />}
       <div className="wrapper">
         <Contacts id={id as string} />
         <div className="chat-area" ref={scrollRef} onMouseEnter={setWatched}>
+          <Outlet />
           {/* <div className="chat-area-header">
       <div className="chat-area-title">CodePen Group</div>
       <div className="chat-area-group">
@@ -102,7 +109,6 @@ export default function MessengerPage() {
         <span>+4</span>
       </div>
     </div> */}
-          <Outlet />
         </div>
         {/* <div className="detail-area">
     <div className="detail-area-header">

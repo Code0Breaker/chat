@@ -1,9 +1,9 @@
 import { socket } from "../../socket"
 import Peer from 'simple-peer/simplepeer.min.js';
-import { useStore } from "../../store/store";
+import { useStore, userMediaStream } from "../../store/store";
 import { useNavigate } from "react-router-dom";
 import s from './caller.module.css'
-export const Caller = ({caller, callerSignal}:{caller:{ name: string, id: string, roomId: string },callerSignal:any}) =>{
+export const Caller = ({caller, callerSignal,setOpen}:{caller:{ name: string, id: string, roomId: string },callerSignal:any,setOpen:(state:boolean)=>void}) =>{
     const [stream] = useStore(state=>[state.stream])
     const navigate = useNavigate()
     const [usersStream,setUsersStream] = useStore(state=>[state.usersStream, state.setUsersStream])
@@ -29,7 +29,8 @@ export const Caller = ({caller, callerSignal}:{caller:{ name: string, id: string
     
         peer.signal(callerSignal)
         setPeerConnection(peer)
-        navigate(`/call/${caller.roomId}`)
+        // window.open(`/call/${caller.roomId}`,'','popup')
+        setOpen(true)
       }
     return(
         <div className={s.caller}>
