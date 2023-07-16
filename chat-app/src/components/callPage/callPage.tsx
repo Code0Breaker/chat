@@ -60,11 +60,15 @@ const CallPage = () => {
 
     socket.on("callAccepted", (signal) => {
     //   setCallAccepted(true)
+    console.log(signal);
+    
       peer.signal(signal)
     })
+console.log(peer);
 
     setPeerConnection(peer)
   }
+console.log(usersStream);
 
   return (
     <div className={s.call}>

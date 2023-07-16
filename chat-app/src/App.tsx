@@ -19,6 +19,10 @@ function App() {
         }
       ]
     },
+    {
+      path:'call/:id',
+      element:<CallPage/>
+    }
 
   ])
   return routes

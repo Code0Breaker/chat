@@ -60,24 +60,26 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     @MessageBody() callData: any,
     @ConnectedSocket() client: Socket,
   ) {
-     console.log(callData,'=============');
-     client.broadcast.to(callData.roomId).emit('reciveCall',callData)
+    console.log(callData, '=============');
+    client.broadcast.to(callData.roomId).emit('reciveCall', callData);
   }
 
   @SubscribeMessage('answerCall')
   handleAnswerCall(
-    @MessageBody() callData: {
-
-      signal:{type:string,sdp:string},
-      to:{
-      name: string;
-      id: string;
-      roomId: string;
-      }
-  },
+    @MessageBody()
+    callData: {
+      signal: { type: string; sdp: string };
+      to: {
+        name: string;
+        id: string;
+        roomId: string;
+      };
+    },
     @ConnectedSocket() client: Socket,
   ) {
-     console.log(callData,'=============callAccepted');
-     client.broadcast.to(callData.to.roomId).emit('callAccepted',callData.signal)
+    console.log(callData, '=============callAccepted');
+    client.broadcast
+      .to(callData.to.roomId)
+      .emit('callAccepted', callData.signal);
   }
 }
