@@ -9,28 +9,28 @@ export const Caller = ({caller, callerSignal,setOpen}:{caller:{ name: string, id
     const [usersStream,setUsersStream] = useStore(state=>[state.usersStream, state.setUsersStream])
     const [setPeerConnection] = useStore(store=>[store.setPeerConnection])
     const answerCall = () => {
+      window.open(`/call/${caller.roomId}?type=answer`,'','popup')
         // setCallAccepted(true)
-        const peer = new Peer({
-          initiator: false,
-          trickle: false,
-          stream: stream
-        })
+        // const peer = new Peer({
+        //   initiator: false,
+        //   trickle: false,
+        //   stream: stream
+        // })
 
-        peer.on("signal", (data: any) => {
-          console.log({ signal: data, to: caller });
+        // peer.on("signal", (data: any) => {
+        //   console.log({ signal: data, to: caller });
           
-          socket.emit("answerCall", { signal: data, to: caller })
-        })
+        //   socket.emit("answerCall", { signal: data, to: caller })
+        // })
 
-        peer.on("stream", (stream: MediaStream) => {
-            setUsersStream(stream)
-        //   userVideoRef.current.srcObject = stream
-        })
+        // peer.on("stream", (stream: MediaStream) => {
+        //     setUsersStream(stream)
+        // //   userVideoRef.current.srcObject = stream
+        // })
     
-        peer.signal(callerSignal)
-        setPeerConnection(peer)
-        // window.open(`/call/${caller.roomId}`,'','popup')
-        setOpen(true)
+        // peer.signal(callerSignal)
+        // setPeerConnection(peer)
+        // setOpen(true)
       }
     return(
         <div className={s.caller}>

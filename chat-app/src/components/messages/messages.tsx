@@ -49,8 +49,8 @@ export default function Messages({ id }: { id: string }) {
     }
 
     const setOpenVideoCall = () =>{
-        // window.open(`/call/${id}`,'','popup')
-        navigate(`/call/${id}`)
+        window.open(`/call/${id}?type=call`,'','popup')
+        // navigate(`/call/${id}`)
     }
     return (
         <>

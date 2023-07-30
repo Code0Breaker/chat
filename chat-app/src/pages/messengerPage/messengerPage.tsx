@@ -27,7 +27,7 @@ export default function MessengerPage() {
   })
 
   useEffect(() => {
-    socket.emit('connection', localStorage._id)
+    // socket.emit('connection', localStorage._id)
     socket.on('chat', async function (messages) {
       const data = await getUnreadMessages()
       setUnreadMessages(data)
@@ -44,13 +44,13 @@ export default function MessengerPage() {
     socket.on('reciveCall', (data) => {
       if(data.from.id!==localStorage._id){
         setIncomingCall(true)
+        setCaller({ ...data.from, roomId: data.roomId })
         // userMediaStream.postMessage({...data.from, roomId: data.roomId, signalData: data.signalData})
         sessionStorage.signalData = JSON.stringify({...data.from, roomId: data.roomId, signalData: data.signalData});
-        navigate(`/call/${data.roomId}`)
+        // navigate(`/call/${data.roomId}`)
         // userMediaStream.onmessage = ev =>{
           
         // }
-        // setCaller({ ...data.from, roomId: data.roomId })
         // setCallerSignal(data.signalData)
       }
     })
@@ -60,6 +60,7 @@ export default function MessengerPage() {
       socket.off('chat')
       socket.off('isTyping')
       socket.off('reciveCall')
+      socket.off('acceptedPeerConnection')
     }
   }, [socket, id])
 
