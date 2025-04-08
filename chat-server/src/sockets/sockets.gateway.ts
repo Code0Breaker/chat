@@ -1,16 +1,14 @@
-import { Req, Request, UseGuards } from '@nestjs/common';
+import { Request } from '@nestjs/common';
 import {
-  WebSocketGateway,
-  WebSocketServer,
-  SubscribeMessage,
+  ConnectedSocket,
   MessageBody,
   OnGatewayConnection,
   OnGatewayDisconnect,
-  ConnectedSocket,
+  SubscribeMessage,
+  WebSocketGateway,
+  WebSocketServer,
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
-import { JwtAuthGuard } from 'src/user/guards/jwt-auth.guard';
-import { WsGuard } from 'src/user/guards/ws-jwt.guard';
 
 @WebSocketGateway({
   cors: {
@@ -40,8 +38,6 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     @MessageBody() message: any,
     @ConnectedSocket() client: Socket,
   ) {
-    
-
     this.server.to(message.chat._id).emit('chat', message);
   }
 
@@ -50,19 +46,18 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     @MessageBody() message: any,
     @ConnectedSocket() client: Socket,
   ) {
-    
     this.server.to(message.chat._id).emit('chat', message);
   }
 
-  @UseGuards(WsGuard)
+  // @UseGuards(WsGuard)
   @SubscribeMessage('join')
   handleJoin(
     @MessageBody() roomId: string[],
     @ConnectedSocket() client: Socket,
-    @Request() req
+    @Request() req,
   ) {
     const userId = req.user;
-    client.join(roomId||userId)
+    client.join(roomId || userId);
   }
 
   @SubscribeMessage('isTyping')
@@ -75,7 +70,6 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     @MessageBody() callData: any,
     @ConnectedSocket() client: Socket,
   ) {
-  
     client.broadcast.to(callData.roomId).emit('reciveCall', callData);
   }
 
@@ -92,36 +86,30 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     },
     @ConnectedSocket() client: Socket,
   ) {
-  
-    client.broadcast
-      .to(callData.to.roomId)
-      .emit('callAccepted', callData);
+    client.broadcast.to(callData.to.roomId).emit('callAccepted', callData);
   }
-
 
   @SubscribeMessage('acceptPeerConnection')
   handleAcceptPeerConnection(
     @MessageBody()
     acceptorData: {
-        fullname: string;
-        acceptorId: string;
-        accept: boolean;
-        roomId:string
-      },
+      fullname: string;
+      acceptorId: string;
+      accept: boolean;
+      roomId: string;
+    },
     @ConnectedSocket() client: Socket,
   ) {
-  
     client.broadcast
       .to(acceptorData.roomId)
       .emit('acceptedPeerConnection', acceptorData);
   }
 
-
   @SubscribeMessage('sendingPeerSignal')
   handleSendPeerSignal(
     @MessageBody()
     callData: {
-      roomId:string,
+      roomId: string;
       signal: { type: string; sdp: string };
       from: {
         name: string;
@@ -130,10 +118,6 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     },
     @ConnectedSocket() client: Socket,
   ) {
-    
-    client.broadcast
-      .to(callData.roomId)
-      .emit('recivePeerSignal', callData);
+    client.broadcast.to(callData.roomId).emit('recivePeerSignal', callData);
   }
-
 }

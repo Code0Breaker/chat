@@ -5,20 +5,16 @@ import {
   Param,
   Post,
   Request,
-  Sse,
   UseGuards,
 } from '@nestjs/common';
 import { JwtAuthGuard } from 'src/user/guards/jwt-auth.guard';
 import { ChatService } from './chat.service';
-import { CreateChatDto } from './dto/create-chat.dto';
-import { UpdateChatDto } from './dto/update-chat.dto';
-import { Observable, interval, map } from 'rxjs';
 
 @Controller('chat')
 export class ChatController {
   constructor(private readonly chatService: ChatService) {}
 
-  // @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard)
   @Post('search')
   search(@Body('text') text) {
     return this.chatService.search(text);
