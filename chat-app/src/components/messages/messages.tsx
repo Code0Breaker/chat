@@ -7,7 +7,7 @@ import { useStore } from '../../store/store'
 import { timeAgo } from '../../utils/time.utils'
 import { VideoCall } from '../videoCall/videoCall'
 import { url } from '../../apis/baseUrl'
-import { useNavigate } from 'react-router-dom'
+import {Link, useNavigate} from 'react-router-dom'
 
 export default function Messages({ id }: { id: string }) {
     const [messages, setMessages] = useStore((state) => [state.messages, state.setMessages])
@@ -48,10 +48,10 @@ export default function Messages({ id }: { id: string }) {
         socket.emit("chat", data);
     }
 
-    const setOpenVideoCall = () =>{
-        window.open(`/call/${id}?type=call`,'','popup')
-        // navigate(`/call/${id}`)
-    }
+    // const setOpenVideoCall = () =>{
+    //     window.open(`/call/${id}?type=call`,'','popup')
+    //     // navigate(`/call/${id}`)
+    // }
     return (
         <>
             <div className="chat-area-main">
@@ -85,7 +85,7 @@ export default function Messages({ id }: { id: string }) {
             </div>
            
             <div className="chat-area-footer">
-                <button className='send-btn' onClick={setOpenVideoCall}>
+                <Link to={`/messenger/call/${id}?type=call`} className='send-btn'>
                 <svg
                     xmlns="http://www.w3.org/2000/svg"
                     viewBox="0 0 24 24"
@@ -99,7 +99,7 @@ export default function Messages({ id }: { id: string }) {
                     <path d="M23 7l-7 5 7 5V7z" />
                     <rect x={1} y={5} width={15} height={14} rx={2} ry={2} />
                 </svg>
-                </button>
+                </Link>
                 <svg
                     xmlns="http://www.w3.org/2000/svg"
                     viewBox="0 0 24 24"

@@ -9,7 +9,7 @@ export const Caller = ({caller, callerSignal,setOpen}:{caller:{ name: string, id
     const [usersStream,setUsersStream] = useStore(state=>[state.usersStream, state.setUsersStream])
     const [setPeerConnection] = useStore(store=>[store.setPeerConnection])
     const answerCall = () => {
-      window.open(`/call/${caller.roomId}?type=answer`,'','popup')
+        navigate(`/messenger/call/${caller.roomId}?type=answer`)
         // setCallAccepted(true)
         // const peer = new Peer({
         //   initiator: false,

@@ -16,13 +16,14 @@ function App() {
         {
           path:':id',
           element:<MessagesWrapper/>
+        },
+        {
+          path:'call/:id',
+          element:<CallPage/>
         }
       ]
     },
-    {
-      path:'call/:id',
-      element:<CallPage/>
-    }
+
 
   ])
   return routes
