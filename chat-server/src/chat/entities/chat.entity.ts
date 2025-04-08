@@ -22,6 +22,13 @@ export class Chat {
   @Column({ default: false })
   isGroupChat: boolean;
 
+  @Column({
+    type: 'jsonb',
+    array: false,
+    nullable: true,
+  })
+  mutedForUserIds: string[];
+
   @OneToMany(() => Message, (message) => message.chat)
   messages: Message[];
 

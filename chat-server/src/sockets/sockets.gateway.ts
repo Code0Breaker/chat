@@ -1,3 +1,4 @@
+import { Req, Request, UseGuards } from '@nestjs/common';
 import {
   WebSocketGateway,
   WebSocketServer,
@@ -8,6 +9,8 @@ import {
   ConnectedSocket,
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
+import { JwtAuthGuard } from 'src/user/guards/jwt-auth.guard';
+import { WsGuard } from 'src/user/guards/ws-jwt.guard';
 
 @WebSocketGateway({
   cors: {
@@ -37,17 +40,29 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     @MessageBody() message: any,
     @ConnectedSocket() client: Socket,
   ) {
-    console.log(message);
+    
 
     this.server.to(message.chat._id).emit('chat', message);
   }
 
+  @SubscribeMessage('new-contact-message')
+  newContactMessage(
+    @MessageBody() message: any,
+    @ConnectedSocket() client: Socket,
+  ) {
+    
+    this.server.to(message.chat._id).emit('chat', message);
+  }
+
+  @UseGuards(WsGuard)
   @SubscribeMessage('join')
   handleJoin(
     @MessageBody() roomId: string[],
     @ConnectedSocket() client: Socket,
+    @Request() req
   ) {
-    client.join(roomId);
+    const userId = req.user;
+    client.join(roomId||userId)
   }
 
   @SubscribeMessage('isTyping')
@@ -60,7 +75,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     @MessageBody() callData: any,
     @ConnectedSocket() client: Socket,
   ) {
-    console.log(callData, '=============');
+  
     client.broadcast.to(callData.roomId).emit('reciveCall', callData);
   }
 
@@ -68,7 +83,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   handleAnswerCall(
     @MessageBody()
     callData: {
-      signal: { type: string; sdp: string };
+      // signal: { type: string; sdp: string };
       to: {
         name: string;
         id: string;
@@ -77,9 +92,48 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     },
     @ConnectedSocket() client: Socket,
   ) {
-    console.log(callData, '=============callAccepted');
+  
     client.broadcast
       .to(callData.to.roomId)
-      .emit('callAccepted', callData.signal);
+      .emit('callAccepted', callData);
   }
+
+
+  @SubscribeMessage('acceptPeerConnection')
+  handleAcceptPeerConnection(
+    @MessageBody()
+    acceptorData: {
+        fullname: string;
+        acceptorId: string;
+        accept: boolean;
+        roomId:string
+      },
+    @ConnectedSocket() client: Socket,
+  ) {
+  
+    client.broadcast
+      .to(acceptorData.roomId)
+      .emit('acceptedPeerConnection', acceptorData);
+  }
+
+
+  @SubscribeMessage('sendingPeerSignal')
+  handleSendPeerSignal(
+    @MessageBody()
+    callData: {
+      roomId:string,
+      signal: { type: string; sdp: string };
+      from: {
+        name: string;
+        id: string;
+      };
+    },
+    @ConnectedSocket() client: Socket,
+  ) {
+    
+    client.broadcast
+      .to(callData.roomId)
+      .emit('recivePeerSignal', callData);
+  }
+
 }

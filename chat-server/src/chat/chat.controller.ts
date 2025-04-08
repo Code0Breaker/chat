@@ -5,12 +5,14 @@ import {
   Param,
   Post,
   Request,
+  Sse,
   UseGuards,
 } from '@nestjs/common';
 import { JwtAuthGuard } from 'src/user/guards/jwt-auth.guard';
 import { ChatService } from './chat.service';
 import { CreateChatDto } from './dto/create-chat.dto';
 import { UpdateChatDto } from './dto/update-chat.dto';
+import { Observable, interval, map } from 'rxjs';
 
 @Controller('chat')
 export class ChatController {
@@ -28,17 +30,20 @@ export class ChatController {
     return this.chatService.create(id, myId);
   }
 
-  // @UseGuards(JwtAuthGuard)
-  @Post('getAllRooms')
-  getAllRooms(@Body('_id') myId: string) {
-    return this.chatService.getRoomsForUser(myId);
+  @UseGuards(JwtAuthGuard)
+  @Get('getAllRooms')
+  getAllRooms(@Request() req) {
+    console.log(req.user);
+    return this.chatService.getRoomsForUser(req.user._id);
   }
 
+  @UseGuards(JwtAuthGuard)
   @Get('getChat/:id')
   getChat(@Param('id') roomId: string) {
     return this.chatService.getChat(roomId);
   }
 
+  @UseGuards(JwtAuthGuard)
   @Get('getMessages/:id')
   getMessages(@Param('id') id) {
     return this.chatService.findOne(id);

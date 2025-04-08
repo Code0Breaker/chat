@@ -2,7 +2,7 @@ import { IChat, IMessage } from "../types"
 import { base_url } from "./baseUrl"
 
 export const getContacts = async (): Promise<IChat[]> => {
-    const { data } = await base_url.post('chat/getAllRooms', { _id: localStorage._id }, { headers: { 'Authorization': 'Bearer ' + localStorage.token } })
+    const { data } = await base_url.get('chat/getAllRooms' , { headers: { 'Authorization': 'Bearer ' + localStorage.token } })
     return data
 }
 

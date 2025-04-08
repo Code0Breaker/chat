@@ -8,6 +8,7 @@ import { UpdateChatDto } from './dto/update-chat.dto';
 import { Chat } from './entities/chat.entity';
 import { ConnectedIds } from './entities/connectedIds.entity';
 import { classToPlain } from 'class-transformer';
+import { Message } from 'src/messages/entities/message.entity';
 
 @Injectable()
 export class ChatService {
@@ -29,7 +30,7 @@ export class ChatService {
     return data;
   }
 
-  async create(id: string[], myId: string) {
+ public async create(id: string[], myId: string) {
     const users = await this.userRepo.find({ where: { _id: In(id) } });
     const chatName: string = users.map((item) => item.fullname).join(', ');
     const forRel = await this.userRepo.find({
@@ -48,12 +49,23 @@ export class ChatService {
 
   async getRoomsForUser(userId:string) {
     const query = await this.chatRepo
-      .createQueryBuilder('chat')
-      .leftJoin('chat.users', 'users')
-      .where('users._id = :userId', { userId })
-      .leftJoinAndSelect('chat.users', 'all_users')
-      .orderBy('chat.updated_at', 'DESC')
-      .getMany();
+    .createQueryBuilder('chat')
+    .leftJoin('chat.users', 'users')
+    .where('users._id = :userId', { userId })
+    .leftJoinAndSelect('chat.users', 'user', 'user._id != :userId', { userId })
+    .leftJoinAndMapMany(
+      "chat.messages",
+      "chat.messages",
+      'message',
+      'message.isWatched = FALSE AND chat._id = message.chat_id'
+    )
+    .leftJoin('message.user', 'messageUser')
+    .addGroupBy('chat._id')
+    .addGroupBy('user._id')
+    .addGroupBy('message._id')
+    .addOrderBy('MAX(message.created_at)', 'DESC')
+    .addOrderBy('chat.updated_at', 'DESC')
+    .getMany();
 
       return query;
   }

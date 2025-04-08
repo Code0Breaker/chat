@@ -5,6 +5,7 @@ import { Repository } from 'typeorm';
 import { CreateMessageDto } from './dto/create-message.dto';
 import { UpdateMessageDto } from './dto/update-message.dto';
 import { Message } from './entities/message.entity';
+import { ChatService } from 'src/chat/chat.service';
 
 @Injectable()
 export class MessagesService {
@@ -13,8 +14,10 @@ export class MessagesService {
     private messageRepo: Repository<Message>,
     @InjectRepository(Chat)
     private chatRepo: Repository<Chat>,
+    private chatService: ChatService
   ) {}
   async create(createMessageDto) {
+    
     const data = await this.messageRepo.save({
       content: createMessageDto.content,
       sender_id: createMessageDto.myId,

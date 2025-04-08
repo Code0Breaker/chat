@@ -71,8 +71,8 @@ export class UserService {
     }
   }
 
-  async verifyUser(user) {
-    const verified = await this.userRepo.findOne(user);
+  async verifyUser(user:{userId:string}) {
+    const verified = await this.userRepo.findOneBy({_id:user.userId});
     return {
       refresh_token: this.jwtService.sign({
         _id: verified._id,

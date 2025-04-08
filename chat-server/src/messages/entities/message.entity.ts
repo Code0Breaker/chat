@@ -33,6 +33,10 @@ export class Message {
   @JoinTable()
   chat: Chat;
 
+  @ManyToOne(()=>Message, (message)=>message._id)
+  @JoinColumn()
+  replyMessage:Message;
+
   @CreateDateColumn()
   created_at: Date;
 

@@ -48,6 +48,7 @@ const CallPage = () => {
 
         peer.on('stream', (remoteStream: MediaStream) => {
           console.log(remoteStream, 'remoteStream');
+          setUsersStream(remoteStream)
           if (userVideo.current) {
             userVideo.current.srcObject = remoteStream;
           }
@@ -62,30 +63,30 @@ const CallPage = () => {
         })
         socket.on('acceptedPeerConnection', ({ fullname, acceptorId, accept, roomId }) => {
 
-
-
-        })
-
-        peer.on('signal', (signalData: any) => {
-          socket.emit('sendingPeerSignal', {
-            roomId: id,
-            signalData,
-            from: { name: localStorage.fullname, id: localStorage._id }
+          peer.on('signal', (signalData: any) => {
+            socket.emit('sendingPeerSignal', {
+              roomId: id,
+              signalData,
+              from: { name: localStorage.fullname, id: localStorage._id }
+            })
           })
+  
+          socket.on('recivePeerSignal', (callData) => {
+            console.log(callData, 'recivePeerSignal');
+            peer.signal(callData.signalData)
+          })
+  
+          peer.on('stream', (remoteStream: MediaStream) => {
+            console.log(remoteStream, 'remoteStream');
+  
+            if (userVideo.current) {
+              userVideo.current.srcObject = remoteStream;
+            }
+          });
+
         })
 
-        socket.on('recivePeerSignal', (callData) => {
-          console.log(callData, 'recivePeerSignal');
-          peer.signal(callData.signalData)
-        })
-
-        peer.on('stream', (remoteStream: MediaStream) => {
-          console.log(remoteStream, 'remoteStream');
-
-          if (userVideo.current) {
-            userVideo.current.srcObject = remoteStream;
-          }
-        });
+      
       }
 
 
@@ -127,7 +128,7 @@ const CallPage = () => {
 
     })();
   }, []);
-  console.log(caller, callerSignal);
+  console.log(usersStream);
 
   const callUser = () => {
 
@@ -140,7 +141,7 @@ const CallPage = () => {
   return (
     <div className={s.call}>
       {myVideo && <video playsInline muted ref={myVideo} autoPlay style={{ width: "300px" }} />}
-      {userVideo && <video playsInline ref={userVideo} autoPlay style={{ width: "300px" }} />}
+      {userVideo.current && <video playsInline ref={userVideo} autoPlay style={{ width: "300px" }} />}
       {/* <video
               playsInline
               ref={e => e && (e.srcObject = stream)}

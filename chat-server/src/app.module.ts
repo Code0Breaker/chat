@@ -11,11 +11,11 @@ import { TypeOrmModule } from '@nestjs/typeorm';
   imports: [
     TypeOrmModule.forRoot({
       type: 'postgres',
-      host: 'db.shield-platform.com',
+      host: 'db.animehub.club',
       port: 5432,
       username: 'overlord',
       password: 'Overlord_9600',
-      database: 'chat',
+      database: 'animechatdb',
       entities: ['dist/**/*.entity{.ts,.js}'],
       synchronize: true,
       // ssl:{rejectUnauthorized:false}
@@ -28,4 +28,4 @@ import { TypeOrmModule } from '@nestjs/typeorm';
   controllers: [AppController],
   providers: [AppService],
 })
-export class AppModule {}
+export class AppModule { }
