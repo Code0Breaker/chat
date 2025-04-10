@@ -70,6 +70,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     @MessageBody() callData: any,
     @ConnectedSocket() client: Socket,
   ) {
+    console.log('Call User: ' + JSON.stringify(callData, null, 2));
     client.broadcast.to(callData.roomId).emit('reciveCall', callData);
   }
 
@@ -77,7 +78,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   handleAnswerCall(
     @MessageBody()
     callData: {
-      // signal: { type: string; sdp: string };
+      signal: { type: string; sdp: string };
       to: {
         name: string;
         id: string;

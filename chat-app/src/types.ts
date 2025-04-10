@@ -1,3 +1,5 @@
+import {SignalData} from "simple-peer";
+
 export interface ILogin {
     email: string
     password: string
@@ -37,3 +39,15 @@ export interface IChat {
     messages?: IMessage[];
 }
 
+export interface IPeerSignalMessage {
+    peerData: SignalData;
+    roomId: string;
+    from: {
+        name: string;
+        id: string;
+    };
+}
+
+export interface OutletCallContextType {
+    peerData: SignalData|null;
+}

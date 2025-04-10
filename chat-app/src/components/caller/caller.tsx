@@ -1,41 +1,25 @@
-import { socket } from "../../socket"
-import Peer from 'simple-peer/simplepeer.min.js';
-import { useStore, userMediaStream } from "../../store/store";
 import { useNavigate } from "react-router-dom";
-import s from './caller.module.css'
-export const Caller = ({caller, callerSignal,setOpen}:{caller:{ name: string, id: string, roomId: string },callerSignal:any,setOpen:(state:boolean)=>void}) =>{
-    const [stream] = useStore(state=>[state.stream])
-    const navigate = useNavigate()
-    const [usersStream,setUsersStream] = useStore(state=>[state.usersStream, state.setUsersStream])
-    const [setPeerConnection] = useStore(store=>[store.setPeerConnection])
+import s from "./caller.module.css";
+import {FC} from "react";
+
+interface CallerProps {
+    caller: { name: string; id: string; roomId: string };
+    setOpen: (state: boolean) => void;
+}
+
+export const Caller: FC<CallerProps> = ({ caller, setOpen }) => {
+    const navigate = useNavigate();
+
     const answerCall = () => {
-        navigate(`/messenger/call/${caller.roomId}?type=answer`)
-        // setCallAccepted(true)
-        // const peer = new Peer({
-        //   initiator: false,
-        //   trickle: false,
-        //   stream: stream
-        // })
+        // Navigate to the call page as an answerer
+        navigate(`/messenger/call/${caller.roomId}?type=answer`);
+        setOpen(false);
+    };
 
-        // peer.on("signal", (data: any) => {
-        //   console.log({ signal: data, to: caller });
-          
-        //   socket.emit("answerCall", { signal: data, to: caller })
-        // })
-
-        // peer.on("stream", (stream: MediaStream) => {
-        //     setUsersStream(stream)
-        // //   userVideoRef.current.srcObject = stream
-        // })
-    
-        // peer.signal(callerSignal)
-        // setPeerConnection(peer)
-        // setOpen(true)
-      }
-    return(
+    return (
         <div className={s.caller}>
             <h3>{caller.name}</h3>
-            <button onClick={answerCall}>answer</button>
+            <button onClick={answerCall}>Answer</button>
         </div>
-    )
-}
+    );
+};
