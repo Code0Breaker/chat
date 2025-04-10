@@ -28,7 +28,7 @@ const CallPage = () => {
         (async () => {
             // Получаем свой медиапоток
             const myStream = await navigator.mediaDevices.getUserMedia({
-                video: false,  // если нужна видеокамера – установите true
+                video: true,  // если нужна видеокамера – установите true
                 audio: true
             });
 
