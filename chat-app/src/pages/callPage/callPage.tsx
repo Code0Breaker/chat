@@ -7,6 +7,7 @@ import {useStore} from "../../store/store";
 import {socket} from "../../socket";
 import SimplePeer from "simple-peer/simplepeer.min.js";
 import {SignalData} from "simple-peer";
+import {hasWebcam} from "../../utils/devices.utils.ts";
 
 
 const CallPage = () => {
@@ -23,20 +24,21 @@ const CallPage = () => {
     const connectionRef = useRef(null);
     const {id} = useParams();
     const callDataContext = useOutletContext<OutletCallContextType>();
-
+    const peerRef = useRef<any>(null);
     useEffect(() => {
         (async () => {
             // Получаем свой медиапоток
+            const hasVideo = await hasWebcam();
             const myStream = await navigator.mediaDevices.getUserMedia({
-                video: true,  // если нужна видеокамера – установите true
+                video: hasVideo,
                 audio: true
             });
 
             // Привязываем свой поток к видеоэлементу
-            if (myVideo.current) {
-                myVideo.current.srcObject = myStream;
-                await myVideo.current.play();
-            }
+
+            myVideo?.current && (myVideo.current.srcObject = myStream);
+            // await myVideo.current?.play();
+
 
             if (callDataContext?.peerData) {
                 // Создаем peer без инициатора (так как мы принимаем звонок)
@@ -45,7 +47,7 @@ const CallPage = () => {
                     trickle: false,
                     stream: myStream,
                 });
-
+                console.log(myStream)
                 peer.on('signal', (data: SignalData) => {
                     socket.emit('answerCall', {
                         signal: data,
@@ -57,34 +59,43 @@ const CallPage = () => {
                     });
                 })
                 peer.on('stream', (remoteStream: MediaStream) => {
+                    console.log(remoteStream,'-=-=-=-')
                     if (userVideo.current) {
                         userVideo.current.srcObject = remoteStream;
                         userVideo.current.play();
                     }
                 });
                 peer.signal(callDataContext.peerData)
-                setCallerSignal(peer)
+                // setCallerSignal(peer)
             }
         })();
     }, []);
 
 
     const callUser = async () => {
+        const hasVideo = await hasWebcam();
+        const stream = await navigator.mediaDevices.getUserMedia({
+            video: hasVideo,
+            audio: true,
+        });
 
+        myVideo.current!.srcObject = stream;
 
         const peer = new SimplePeer({
             initiator: true,
             trickle: false,
-            stream: myVideo.current?.srcObject
+            stream,
         });
+
+        peerRef.current = peer; // store peer
 
         peer.on('signal', (data: SignalData) => {
             socket.emit('callUser', {
                 peerData: data,
                 roomId: id,
-                from: {name: localStorage.fullname, id: localStorage._id}
+                from: { name: localStorage.fullname, id: localStorage._id }
             });
-        })
+        });
 
         peer.on('stream', (remoteStream: MediaStream) => {
             if (userVideo.current) {
@@ -94,9 +105,13 @@ const CallPage = () => {
         });
 
         socket.on('callAccepted', (data) => {
-            peer.signal(data.peerData)
-            setAcceptorSignal(data.peerData)
-        })
+            console.log(data);
+
+            // ✅ Only call signal if peer still exists
+            if (peerRef.current) {
+                peerRef.current.signal(data.signal);
+            }
+        });
     };
 
     return (
