@@ -2,7 +2,8 @@ import { useEffect, useRef, useState } from "react";
 import s from "./callPage.module.css";
 import { useLocation, useOutletContext, useParams } from "react-router-dom";
 import { socket } from "../../socket";
-import SimplePeer, { SignalData } from "simple-peer/simplepeer.min.js";
+import SimplePeer from "simple-peer/simplepeer.min.js";
+import {SignalData} from "simple-peer";
 import { hasWebcam } from "../../utils/devices.utils.ts";
 import { OutletCallContextType } from "../../types";
 
