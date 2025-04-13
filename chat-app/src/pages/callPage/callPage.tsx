@@ -30,17 +30,21 @@ const CallPage = () => {
             stream,
             config: {
                 iceServers: [
-                    // STUN сервер, который используется для обнаружения внешнего IP
+                    {
+                        urls: "stun:stun.l.google.com:19302"
+                    },
                     {
                         urls: "stun:turn.animehub.club:3478"
                     },
-                    // TURN сервер, который будет использоваться для реле соединений, если прямое соединение невозможно
                     {
-                        urls: "turn:turn.animehub.club:3478",
+                        urls: [
+                            "turn:turn.animehub.club:3478?transport=udp",
+                            "turn:turn.animehub.club:3478?transport=tcp"
+                        ],
                         username: "webrtcuser",
                         credential: "Overlord_9600"
                     }
-                ],
+                ]
             },
         });
 
