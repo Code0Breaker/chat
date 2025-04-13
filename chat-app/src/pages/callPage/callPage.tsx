@@ -29,7 +29,18 @@ const CallPage = () => {
             trickle: true,
             stream,
             config: {
-                iceServers: [{ urls: "stun:stun.l.google.com:19302" }],
+                iceServers: [
+                    // STUN сервер, который используется для обнаружения внешнего IP
+                    {
+                        urls: "stun:turn.animehub.club:3478"
+                    },
+                    // TURN сервер, который будет использоваться для реле соединений, если прямое соединение невозможно
+                    {
+                        urls: "turn:turn.animehub.club:3478",
+                        username: "webrtcuser",
+                        credential: "Overlord_9600"
+                    }
+                ],
             },
         });
 
