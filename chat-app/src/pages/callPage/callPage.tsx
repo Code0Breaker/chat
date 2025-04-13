@@ -30,7 +30,6 @@ const CallPage = () => {
             stream,
             config: {
                 iceServers: [
-                    { urls: "stun:stun.l.google.com:19302" },
                     { urls: "stun:turn.animehub.club:3478" },
                     {
                         urls: [
