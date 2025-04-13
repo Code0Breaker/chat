@@ -49,5 +49,8 @@ export interface IPeerSignalMessage {
 }
 
 export interface OutletCallContextType {
-    peerData: SignalData|null;
+    peerData: SignalData | null;
+    candidateSignal: SignalData[];
+    setOfferSignal:(offerSignal: SignalData|null) => void;
+    setCandidateSignal:(candidateSignal: SignalData[]) => void;
 }

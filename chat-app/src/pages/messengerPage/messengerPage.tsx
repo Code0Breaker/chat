@@ -18,48 +18,76 @@ export default function MessengerPage() {
     );
     const [incomingCall, setIncomingCall] = useState(false);
     const [caller, setCaller] = useState<{ name: string; id: string; roomId: string } | null>(null);
-    const [callerSignal, setCallerSignal] = useState<SignalData | null>(null);
-    const scrollRef = useRef<HTMLDivElement>(null);
+    const [offerSignal, setOfferSignal] = useState<SignalData | null>(null);
+    const [candidateSignal, setCandidateSignal] = useState<SignalData[]>([]);
     const [open, setOpen] = useState(false);
+    const scrollRef = useRef<HTMLDivElement>(null);
 
-    // Prepare the Outlet context for CallPage with the initial peerData
+    // Передаем данные через Outlet для использования на странице звонка
     const callData: OutletCallContextType = {
-        peerData: callerSignal,
+        peerData: offerSignal,
+        candidateSignal,
+        setOfferSignal,
+        setCandidateSignal
     };
 
     useEffect(() => {
         if (scrollRef.current) {
             scrollRef.current.scrollTo(0, scrollRef.current.scrollHeight);
         }
-    });
+    }, []);
 
     useEffect(() => {
         socket.on("chat", async (messages) => {
             const data = await getUnreadMessages();
             setUnreadMessages(data);
-
             if (messages.sender_id !== localStorage._id) {
                 playNotificationSound();
             }
-
             if (messages.chat._id === id) {
                 addToMessages(messages);
             }
         });
 
         socket.on("reciveCall", (data: IPeerSignalMessage) => {
-            if (data.from.id !== localStorage._id) {
-                setIncomingCall(true);
-                setCaller({ id: data.from.id, roomId: data.roomId, name: data.from.name });
-                setCallerSignal(data.peerData);
-                setOpen(true);
+            console.log("reciveCall event received, data=", data);
+            // Если пришли данные и либо peerData, либо signal присутствуют
+            if (!data) {
+                console.warn("reciveCall: нет данных");
+                return;
+            }
+
+            // Если в данных есть поле peerData, то используем его
+            if (data.peerData) {
+                console.log("reciveCall (peerData):", data.peerData);
+                if (data.from && data.from.id !== localStorage._id) {
+                    if (data.peerData.type === "offer") {
+                        setOfferSignal(data.peerData);
+                        setIncomingCall(true);
+                        setCaller({ id: data.from.id, roomId: data.roomId, name: data.from.name });
+                        setOpen(true);
+                    } else {
+                        console.log("Получен candidate (peerData):", data.peerData);
+                        setCandidateSignal(prev => [...prev, data.peerData]);
+                    }
+                }
+            }
+            // Если поля peerData нет, но есть поле signal – считаем его candidate
+            else if (data.signal) {
+                console.log("reciveCall (signal):", data.signal);
+                if (data.from && data.from.id !== localStorage._id) {
+                    setCandidateSignal(prev => [...prev, data.signal]);
+                }
+            }
+            else {
+                console.warn("reciveCall: нет данных ни в peerData, ни в signal");
             }
         });
 
         return () => {
             socket.off("chat");
             socket.off("isTyping");
-            socket.off("reciveCall");
+            // socket.off("reciveCall");
             socket.off("acceptedPeerConnection");
         };
     }, [id, addToMessages, setUnreadMessages]);
@@ -89,7 +117,6 @@ export default function MessengerPage() {
             <div className="wrapper">
                 <Contacts id={id as string} />
                 <div className="chat-area" ref={scrollRef} onMouseEnter={setWatched}>
-                    {/* Provide the Outlet with context for call signal data */}
                     <Outlet context={callData} />
                 </div>
             </div>
