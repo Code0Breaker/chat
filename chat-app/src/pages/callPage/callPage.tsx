@@ -54,6 +54,11 @@ const CallPage = () => {
             pc.oniceconnectionstatechange = () => {
                 console.log("ICE connection state:", pc.iceConnectionState);
             };
+            pc.onicecandidate = (event:any) => {
+                if (event.candidate) {
+                    console.log('Candidate:', event.candidate.candidate);
+                }
+            };
         }
         return peer;
     };
