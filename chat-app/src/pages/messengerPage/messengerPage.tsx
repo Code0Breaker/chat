@@ -71,15 +71,7 @@ export default function MessengerPage() {
                         setCandidateSignal(prev => [...prev, data.peerData]);
                     }
                 }
-            }
-            // Если поля peerData нет, но есть поле signal – считаем его candidate
-            else if (data.signal) {
-                console.log("reciveCall (signal):", data.signal);
-                if (data.from && data.from.id !== localStorage._id) {
-                    setCandidateSignal(prev => [...prev, data.signal]);
-                }
-            }
-            else {
+            } else {
                 console.warn("reciveCall: нет данных ни в peerData, ни в signal");
             }
         });

@@ -103,10 +103,6 @@ const CallPage = () => {
                 }
             });
 
-            peer.on("error", (err) => {
-                console.error("Answer peer error:", err);
-            });
-
             // Передаем offer в peer
             peer.signal(callDataContext.peerData);
             console.log("Применяем отложенные candidate:", callDataContext.candidateSignal);
@@ -160,9 +156,7 @@ const CallPage = () => {
             }
         });
 
-        peer.on("error", (err) => {
-            console.error("Caller peer error:", err);
-        });
+
 
         const handleCallAccepted = (data: { signal: SignalData }) => {
             console.log("Caller side: callAccepted получен", data);
