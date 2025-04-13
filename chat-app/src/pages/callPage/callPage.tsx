@@ -30,12 +30,8 @@ const CallPage = () => {
             stream,
             config: {
                 iceServers: [
-                    {
-                        urls: "stun:stun.l.google.com:19302"
-                    },
-                    {
-                        urls: "stun:turn.animehub.club:3478"
-                    },
+                    { urls: "stun:stun.l.google.com:19302" },
+                    { urls: "stun:turn.animehub.club:3478" },
                     {
                         urls: [
                             "turn:turn.animehub.club:3478?transport=udp",
@@ -56,6 +52,9 @@ const CallPage = () => {
             };
             pc.onicecandidateerror = (e: any) => {
                 console.error("ICE candidate error:", e);
+            };
+            pc.oniceconnectionstatechange = () => {
+                console.log("ICE connection state:", pc.iceConnectionState);
             };
         }
         return peer;
