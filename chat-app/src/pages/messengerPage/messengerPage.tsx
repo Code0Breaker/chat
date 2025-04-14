@@ -80,7 +80,7 @@ export default function MessengerPage() {
             socket.off("chat");
             socket.off("isTyping");
             // socket.off("reciveCall");
-            socket.off("acceptedPeerConnection");
+            // socket.off("acceptedPeerConnection");
         };
     }, [id, addToMessages, setUnreadMessages]);
 

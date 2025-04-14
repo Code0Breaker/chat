@@ -196,16 +196,11 @@ const CallPage = () => {
         };
 
         socket.on("callAccepted", handleCallAccepted);
-        const handleCandidate = (data: { signal: SignalData }) => {
-            console.log("Caller side: получен candidate из socket", data);
-            peer.signal(data.signal);
-        };
-        socket.on("signalCandidate", handleCandidate);
-
-        return () => {
-            socket.off("callAccepted", handleCallAccepted);
-            socket.off("signalCandidate", handleCandidate);
-        };
+        // const handleCandidate = (data: { signal: SignalData }) => {
+        //     console.log("Caller side: получен candidate из socket", data);
+        //     peer.signal(data.signal);
+        // };
+        // socket.on("signalCandidate", handleCandidate);
     };
 
     return (
