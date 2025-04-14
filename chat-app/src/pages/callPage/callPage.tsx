@@ -58,6 +58,16 @@ const CallPage = () => {
             // peer.destroy();
         });
 
+        peer.on("icecandidate", (candidate: RTCIceCandidate) => {
+            if (candidate) {
+                console.log("ICE Candidate:", candidate);
+                socket.emit("new-ice-candidate", {
+                    candidate,
+                    roomId: id,
+                });
+            }
+        });
+
         // Если возможно, отслеживаем состояние RTCPeerConnection
         const pc = (peer as any)._pc;
         if (pc) {
@@ -146,6 +156,8 @@ const CallPage = () => {
                 });
             }
         }
+
+
     }, [callDataContext.peerData, callDataContext.candidateSignal, isAnswering, myStream, id]);
 
     // Логика для вызывающего (caller)
@@ -197,6 +209,19 @@ const CallPage = () => {
 
         socket.on("callAccepted", handleCallAccepted);
     };
+
+    useEffect(() => {
+        socket.on("new-ice-candidate", (data: { candidate: SignalData }) => {
+            if (peerRef.current && data.candidate) {
+                console.log("Получен новый ICE кандидат", data.candidate);
+                peerRef.current.signal(data.candidate);
+            }
+        });
+
+        return () => {
+            socket.off("new-ice-candidate");
+        };
+    }, []);
 
     return (
         <div className={s.call}>

@@ -5,13 +5,10 @@ import { SendIcon } from '../../assets/icons/sendIcon'
 import { socket } from '../../socket'
 import { useStore } from '../../store/store'
 import { timeAgo } from '../../utils/time.utils'
-import { VideoCall } from '../videoCall/videoCall'
-import { url } from '../../apis/baseUrl'
-import {Link, useNavigate} from 'react-router-dom'
+import {Link} from 'react-router-dom'
 
 export default function Messages({ id }: { id: string }) {
     const [messages, setMessages] = useStore((state) => [state.messages, state.setMessages])
-    const navigate = useNavigate()
     const [text, setText] = useState('')
     const [isTyping, setIsTyping] = useState(false)
     const [typerId, setTyperId] = useState(null)

@@ -121,4 +121,11 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   ) {
     client.broadcast.to(callData.roomId).emit('recivePeerSignal', callData);
   }
+  @SubscribeMessage('new-ice-candidate')
+  handleNewIceCandidate(
+    @MessageBody() message: { candidate: RTCIceCandidate; roomId: string },
+    @ConnectedSocket() client: Socket,
+  ) {
+    client.broadcast.to(message.roomId).emit('new-ice-candidate', message);
+  }
 }
