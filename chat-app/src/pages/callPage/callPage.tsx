@@ -8,7 +8,7 @@ import {OutletCallContextType} from "../../types";
 import {SignalData, Instance} from "simple-peer";
 
 const CallPage = () => {
-    const { id } = useParams();
+    const {id} = useParams();
 
     // Определяем режим по URL-параметру: если type=answer, то это режим отвечающего.
     const searchParams = new URLSearchParams(window.location.search);
@@ -40,6 +40,16 @@ const CallPage = () => {
                     }
                 ]
             },
+        });
+
+        peer.on('error', (err:any) => {
+            console.error('WebRTC Error:', err);
+
+            // Cleanup logic
+            peer.destroy();
+
+            // Show error to user
+            alert(`Call failed: ${err.message}`);
         });
 
         // Если возможно, отслеживаем состояние RTCPeerConnection
@@ -102,7 +112,7 @@ const CallPage = () => {
                 if (data.type === "answer") {
                     socket.emit("answerCall", {
                         signal: data,
-                        to: { roomId: id, id: localStorage._id, name: localStorage.fullname },
+                        to: {roomId: id, id: localStorage._id, name: localStorage.fullname},
                     });
                 }
             });
@@ -149,13 +159,13 @@ const CallPage = () => {
                 socket.emit("callUser", {
                     peerData: data,
                     roomId: id,
-                    from: { name: localStorage.fullname, id: localStorage._id },
+                    from: {name: localStorage.fullname, id: localStorage._id},
                 });
             } else {
                 socket.emit("callUser", {
                     peerData: data,
                     roomId: id,
-                    from: { name: localStorage.fullname, id: localStorage._id },
+                    from: {name: localStorage.fullname, id: localStorage._id},
                 });
             }
         });
@@ -172,7 +182,6 @@ const CallPage = () => {
                     );
             }
         });
-
 
 
         const handleCallAccepted = (data: { signal: SignalData }) => {
@@ -200,13 +209,13 @@ const CallPage = () => {
                 ref={myVideo}
                 autoPlay
                 muted
-                style={{ width: "300px" }}
+                style={{width: "300px"}}
             />
             <video
                 playsInline
                 ref={userVideo}
                 autoPlay
-                style={{ width: "300px" }}
+                style={{width: "300px"}}
             />
             <div className={s.callActions}>
                 {/* Если режим вызывающего, отображаем кнопку "Call" */}
