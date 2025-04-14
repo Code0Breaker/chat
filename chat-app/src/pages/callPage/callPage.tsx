@@ -65,7 +65,7 @@ const CallPage = () => {
                 console.log("RTCPeerConnection state:", pc.connectionState);
             };
             pc.onicecandidateerror = (e: any) => {
-                console.error("ICE candidate error:", e);
+                console.error("ICE candidate error:", JSON.stringify(e, null,2));
             };
             pc.oniceconnectionstatechange = () => {
                 console.log("ICE connection state:", pc.iceConnectionState);
