@@ -7,7 +7,7 @@ import * as cookieParser from 'cookie-parser';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   app.enableCors({
-    origin: 'https://chat.animehub.club', // <-- frontend URL
+    origin: 'https://chat-front.animehub.club', // <-- frontend URL
     credentials: true, // <-- required to send cookies or Authorization headers
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
