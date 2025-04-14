@@ -37,16 +37,16 @@ const CallPage = () => {
                         username: "ef45KJSYNE034M5IUE",
                         credential: "bYXVJbbTvjC61JyA"
                     },
-                    {
-                        urls:"stun:turn.animehub.club:3478"
-                    },
-                    {
-                        urls: [
-                            "turn:turn.animehub.club:3478"
-                        ],
-                        username: "webrtcuser",
-                        credential: "Overlord_9600"
-                    }
+                    // {
+                    //     urls:"stun:turn.animehub.club:3478"
+                    // },
+                    // {
+                    //     urls: [
+                    //         "turn:turn.animehub.club:3478"
+                    //     ],
+                    //     username: "webrtcuser",
+                    //     credential: "Overlord_9600"
+                    // }
                 ]
             },
         });
@@ -55,7 +55,7 @@ const CallPage = () => {
             console.error('WebRTC Error:', err.message);
 
             // Cleanup logic
-            peer.destroy();
+            // peer.destroy();
         });
 
         // Если возможно, отслеживаем состояние RTCPeerConnection
