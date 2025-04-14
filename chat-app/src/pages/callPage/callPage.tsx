@@ -32,8 +32,17 @@ const CallPage = () => {
                 iceServers: [
                     {
                         urls: [
-                            "turn:turn.animehub.club:3478?transport=udp",
-                            "turn:turn.animehub.club:3478?transport=tcp"
+                            "stun:relay1.expressturn.com:3478"
+                        ],
+                        username: "ef45KJSYNE034M5IUE",
+                        credential: "bYXVJbbTvjC61JyA"
+                    },
+                    {
+                        urls:"stun:turn.animehub.club:3478"
+                    },
+                    {
+                        urls: [
+                            "turn:turn.animehub.club:3478"
                         ],
                         username: "webrtcuser",
                         credential: "Overlord_9600"
@@ -43,13 +52,10 @@ const CallPage = () => {
         });
 
         peer.on('error', (err:any) => {
-            console.error('WebRTC Error:', err);
+            console.error('WebRTC Error:', err.message);
 
             // Cleanup logic
             peer.destroy();
-
-            // Show error to user
-            alert(`Call failed: ${err.message}`);
         });
 
         // Если возможно, отслеживаем состояние RTCPeerConnection
