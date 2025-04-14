@@ -7,8 +7,7 @@ export const register = async (params:IRegister) => {
 }
 
 export const login = async (params:ILogin):Promise<{fullname:string,pic:string,_id:string}> => {
-    const {data:{token,fullname,pic,_id}} = await base_url.post('user/login',params)
-    localStorage.token = token
+    const {data:{fullname,pic,_id}} = await base_url.post('user/login',params)
     localStorage.fullname = fullname
     localStorage.pic = pic
     localStorage._id = _id

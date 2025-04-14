@@ -2,8 +2,6 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Chat } from 'src/chat/entities/chat.entity';
 import { Repository } from 'typeorm';
-import { CreateMessageDto } from './dto/create-message.dto';
-import { UpdateMessageDto } from './dto/update-message.dto';
 import { Message } from './entities/message.entity';
 import { ChatService } from 'src/chat/chat.service';
 
@@ -14,10 +12,9 @@ export class MessagesService {
     private messageRepo: Repository<Message>,
     @InjectRepository(Chat)
     private chatRepo: Repository<Chat>,
-    private chatService: ChatService
+    private chatService: ChatService,
   ) {}
   async create(createMessageDto) {
-    
     const data = await this.messageRepo.save({
       content: createMessageDto.content,
       sender_id: createMessageDto.myId,
@@ -26,21 +23,22 @@ export class MessagesService {
     });
     const newMessage = await this.messageRepo.findOne({
       where: { _id: data._id },
-      relations: ['user','chat']
+      relations: ['user', 'chat'],
     });
     return newMessage;
   }
 
-  async findAllUnread(userId:string) {
-    const data = await this.messageRepo.createQueryBuilder('message')
-    .leftJoinAndSelect('message.user', 'sender')
-    .leftJoinAndSelect('message.chat', 'chat')
-    .leftJoin('chat.users', 'receiver')
-    .where('receiver._id = :userId', { userId })
-    .andWhere('sender._id <> :userId', { userId })
-    .andWhere('message.isWatched = false')
-    .getMany();
-    return data
+  async findAllUnread(userId: string) {
+    const data = await this.messageRepo
+      .createQueryBuilder('message')
+      .leftJoinAndSelect('message.user', 'sender')
+      .leftJoinAndSelect('message.chat', 'chat')
+      .leftJoin('chat.users', 'receiver')
+      .where('receiver._id = :userId', { userId })
+      .andWhere('sender._id <> :userId', { userId })
+      .andWhere('message.isWatched = false')
+      .getMany();
+    return data;
   }
 
   findOne(id: number) {
@@ -48,8 +46,8 @@ export class MessagesService {
   }
 
   async update(ids: string[]) {
-    if(ids?.length>0){
-      const data = await this.messageRepo.update(ids,{isWatched:true})
+    if (ids?.length > 0) {
+      const data = await this.messageRepo.update(ids, { isWatched: true });
     }
   }
 

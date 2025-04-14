@@ -3,8 +3,9 @@ import { LoginDto } from './dto/login-dto';
 import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
 import { User } from './entities/user.entity';
-import { Like, Repository } from 'typeorm';
+import { Repository } from 'typeorm';
 import * as bcrypt from 'bcrypt';
+
 @Injectable()
 export class UserService {
   constructor(
@@ -33,12 +34,15 @@ export class UserService {
   }
 
   async login(data: LoginDto) {
-    const user = await this.userRepo.findOne({ where:{email: data.email}, select:['password','_id','email','fullname','pic'] });
+    const user = await this.userRepo.findOne({
+      where: { email: data.email },
+      select: ['password', '_id', 'email', 'fullname', 'pic'],
+    });
     try {
       if (user) {
         const isMatch = await bcrypt.compare(data.password, user.password);
         if (isMatch) {
-          await this.userRepo.update({_id:user._id},{isOnline:true})
+          await this.userRepo.update({ _id: user._id }, { isOnline: true });
           return {
             token: this.jwtService.sign({
               _id: user._id,
@@ -71,8 +75,8 @@ export class UserService {
     }
   }
 
-  async verifyUser(user:{userId:string}) {
-    const verified = await this.userRepo.findOneBy({_id:user.userId});
+  async verifyUser(user: { userId: string }) {
+    const verified = await this.userRepo.findOneBy({ _id: user.userId });
     return {
       refresh_token: this.jwtService.sign({
         _id: verified._id,

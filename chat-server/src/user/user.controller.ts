@@ -1,16 +1,18 @@
 import {
+  Body,
   Controller,
   Get,
   Post,
-  Body,
   Request,
+  Res,
   UseGuards,
 } from '@nestjs/common';
 import { UserService } from './user.service';
 
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { CreateUserDto } from './dto/create-user.dto';
-import { LoginDto, Token } from './dto/login-dto';
+import { LoginDto } from './dto/login-dto';
+import { Response } from 'express';
 
 @Controller('user')
 export class UserController {
@@ -30,8 +32,10 @@ export class UserController {
   }
 
   @Post('login')
-  login(@Body() body: LoginDto): Promise<Token | unknown> {
-    return this.userService.login(body);
+  async login(@Body() body: LoginDto, @Res() res: Response): Promise<void> {
+    const data = await this.userService.login(body);
+    res.cookie('token', data.token);
+    res.send(data);
   }
 
   @UseGuards(JwtAuthGuard)

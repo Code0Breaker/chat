@@ -16,5 +16,6 @@ import { User } from './entities/user.entity';
   ],
   controllers: [UserController],
   providers: [UserService, JwtStrategy],
+  exports: [UserService, JwtModule], // 👈 export JwtModule to make JwtService available
 })
 export class UserModule {}

@@ -48,10 +48,6 @@ export default function Messages({ id }: { id: string }) {
         socket.emit("chat", data);
     }
 
-    // const setOpenVideoCall = () =>{
-    //     window.open(`/call/${id}?type=call`,'','popup')
-    //     // navigate(`/call/${id}`)
-    // }
     return (
         <>
             <div className="chat-area-main">

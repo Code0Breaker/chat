@@ -1,14 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { User } from 'src/user/entities/user.entity';
-import { UserService } from 'src/user/user.service';
 import { In, Like, Repository } from 'typeorm';
-import { CreateChatDto } from './dto/create-chat.dto';
-import { UpdateChatDto } from './dto/update-chat.dto';
 import { Chat } from './entities/chat.entity';
 import { ConnectedIds } from './entities/connectedIds.entity';
-import { classToPlain } from 'class-transformer';
-import { Message } from 'src/messages/entities/message.entity';
 
 @Injectable()
 export class ChatService {
@@ -30,7 +25,7 @@ export class ChatService {
     return data;
   }
 
- public async create(id: string[], myId: string) {
+  public async create(id: string[], myId: string) {
     const users = await this.userRepo.find({ where: { _id: In(id) } });
     const chatName: string = users.map((item) => item.fullname).join(', ');
     const forRel = await this.userRepo.find({
@@ -47,32 +42,37 @@ export class ChatService {
     return { roomId: data._id, messages };
   }
 
-  async getRoomsForUser(userId:string) {
+  async getRoomsForUser(userId: string) {
     const query = await this.chatRepo
-    .createQueryBuilder('chat')
-    .leftJoin('chat.users', 'users')
-    .where('users._id = :userId', { userId })
-    .leftJoinAndSelect('chat.users', 'user', 'user._id != :userId', { userId })
-    .leftJoinAndMapMany(
-      "chat.messages",
-      "chat.messages",
-      'message',
-      'message.isWatched = FALSE AND chat._id = message.chat_id'
-    )
-    .leftJoin('message.user', 'messageUser')
-    .addGroupBy('chat._id')
-    .addGroupBy('user._id')
-    .addGroupBy('message._id')
-    .addOrderBy('MAX(message.created_at)', 'DESC')
-    .addOrderBy('chat.updated_at', 'DESC')
-    .getMany();
+      .createQueryBuilder('chat')
+      .leftJoin('chat.users', 'users')
+      .where('users._id = :userId', { userId })
+      .leftJoinAndSelect('chat.users', 'user', 'user._id != :userId', {
+        userId,
+      })
+      .leftJoinAndMapMany(
+        'chat.messages',
+        'chat.messages',
+        'message',
+        'message.isWatched = FALSE AND chat._id = message.chat_id',
+      )
+      .leftJoin('message.user', 'messageUser')
+      .addGroupBy('chat._id')
+      .addGroupBy('user._id')
+      .addGroupBy('message._id')
+      .addOrderBy('MAX(message.created_at)', 'DESC')
+      .addOrderBy('chat.updated_at', 'DESC')
+      .getMany();
 
-      return query;
+    return query;
   }
 
-  async getChat(userId:string){
-    const data = await this.chatRepo.findOne({where:{_id:userId},relations:['users']})
-    return data
+  async getChat(userId: string) {
+    const data = await this.chatRepo.findOne({
+      where: { _id: userId },
+      relations: ['users'],
+    });
+    return data;
   }
 
   async findOne(roomId) {

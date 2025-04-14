@@ -98,7 +98,7 @@ export default function MessengerPage() {
 
     const setWatched = () => {
         const ids = unreadMessages?.filter((item) => item.chat._id === id).map((item) => item._id);
-        chancgeUnwatchStatus(ids as string[]);
+        // chancgeUnwatchStatus(ids as string[]);
         removeUnreadById(ids as string[]);
     };
 
