@@ -43,23 +43,23 @@ const CallPage = () => {
         });
 
         // Если возможно, отслеживаем состояние RTCPeerConnection
-        const pc = (peer as any)._pc;
-        if (pc) {
-            pc.onconnectionstatechange = () => {
-                console.log("RTCPeerConnection state:", pc.connectionState);
-            };
-            pc.onicecandidateerror = (e: any) => {
-                console.error("ICE candidate error:", e);
-            };
-            pc.oniceconnectionstatechange = () => {
-                console.log("ICE connection state:", pc.iceConnectionState);
-            };
-            pc.onicecandidate = (event:any) => {
-                if (event.candidate) {
-                    console.log('Candidate:', event.candidate.candidate);
-                }
-            };
-        }
+        // const pc = (peer as any)._pc;
+        // if (pc) {
+        //     pc.onconnectionstatechange = () => {
+        //         console.log("RTCPeerConnection state:", pc.connectionState);
+        //     };
+        //     pc.onicecandidateerror = (e: any) => {
+        //         console.error("ICE candidate error:", e);
+        //     };
+        //     pc.oniceconnectionstatechange = () => {
+        //         console.log("ICE connection state:", pc.iceConnectionState);
+        //     };
+        //     pc.onicecandidate = (event:any) => {
+        //         if (event.candidate) {
+        //             console.log('Candidate:', event.candidate.candidate);
+        //         }
+        //     };
+        // }
         return peer;
     };
 
