@@ -54,3 +54,9 @@ export interface OutletCallContextType {
     setOfferSignal:(offerSignal: SignalData|null) => void;
     setCandidateSignal:(candidateSignal: SignalData[]) => void;
 }
+
+export interface CallerData {
+    name: string;
+    id: string;
+    roomId: string;
+}
