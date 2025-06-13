@@ -1,4 +1,4 @@
-// WebRTC Utility Functions
+
 
 export interface MediaDevices {
   cameras: MediaDeviceInfo[];
@@ -15,7 +15,6 @@ export interface CallQualityStats {
   quality: 'good' | 'fair' | 'poor';
 }
 
-// Device Management
 export const getAvailableDevices = async (): Promise<MediaDevices> => {
   try {
     const devices = await navigator.mediaDevices.enumerateDevices();
@@ -26,7 +25,6 @@ export const getAvailableDevices = async (): Promise<MediaDevices> => {
       speakers: devices.filter(device => device.kind === 'audiooutput')
     };
   } catch (error) {
-    console.error('Error getting available devices:', error);
     return { cameras: [], microphones: [], speakers: [] };
   }
 };
@@ -43,26 +41,23 @@ export const checkDevicePermissions = async (): Promise<{
   };
 
   try {
-    // Check camera permission
     const cameraPermission = await navigator.permissions.query({ name: 'camera' as PermissionName });
     permissions.camera = cameraPermission.state === 'granted';
   } catch (error) {
-    console.warn('Camera permission check failed:', error);
+    // Silently handle error
   }
 
   try {
-    // Check microphone permission
     const micPermission = await navigator.permissions.query({ name: 'microphone' as PermissionName });
     permissions.microphone = micPermission.state === 'granted';
   } catch (error) {
-    console.warn('Microphone permission check failed:', error);
+    // Silently handle error
   }
 
   try {
-    // Screen sharing permission is typically requested on-demand
     permissions.screen = 'getDisplayMedia' in navigator.mediaDevices;
   } catch (error) {
-    console.warn('Screen share capability check failed:', error);
+    // Silently handle error
   }
 
   return permissions;
@@ -94,27 +89,22 @@ export const requestMediaPermissions = async (
     const stream = await navigator.mediaDevices.getUserMedia(constraints);
     return stream;
   } catch (error) {
-    console.error('Error requesting media permissions:', error);
     return null;
   }
 };
 
-// Stream Management
 export const switchCamera = async (
   currentStream: MediaStream,
   deviceId: string
 ): Promise<MediaStream | null> => {
   try {
-    // Stop current video tracks
     currentStream.getVideoTracks().forEach(track => track.stop());
     
-    // Get new video stream
     const newVideoStream = await navigator.mediaDevices.getUserMedia({
       video: { deviceId: { exact: deviceId } },
       audio: false
     });
     
-    // Replace video tracks
     const newVideoTrack = newVideoStream.getVideoTracks()[0];
     const audioTracks = currentStream.getAudioTracks();
     
@@ -124,7 +114,6 @@ export const switchCamera = async (
     
     return newStream;
   } catch (error) {
-    console.error('Error switching camera:', error);
     return null;
   }
 };
@@ -134,16 +123,13 @@ export const switchMicrophone = async (
   deviceId: string
 ): Promise<MediaStream | null> => {
   try {
-    // Stop current audio tracks
     currentStream.getAudioTracks().forEach(track => track.stop());
     
-    // Get new audio stream
     const newAudioStream = await navigator.mediaDevices.getUserMedia({
       video: false,
       audio: { deviceId: { exact: deviceId } }
     });
     
-    // Replace audio tracks
     const newAudioTrack = newAudioStream.getAudioTracks()[0];
     const videoTracks = currentStream.getVideoTracks();
     
@@ -153,12 +139,10 @@ export const switchMicrophone = async (
     
     return newStream;
   } catch (error) {
-    console.error('Error switching microphone:', error);
     return null;
   }
 };
 
-// Call Quality Monitoring
 export const monitorCallQuality = (
   peerConnection: RTCPeerConnection,
   callback: (stats: CallQualityStats) => void
@@ -169,9 +153,9 @@ export const monitorCallQuality = (
       const callStats = analyzeRTCStats(stats);
       callback(callStats);
     } catch (error) {
-      console.error('Error monitoring call quality:', error);
+      // Silently handle error
     }
-  }, 2000); // Check every 2 seconds
+  }, 2000);
 
   return () => clearInterval(interval);
 };
@@ -196,7 +180,6 @@ const analyzeRTCStats = (stats: RTCStatsReport): CallQualityStats => {
     }
   });
 
-  // Determine quality based on metrics
   let quality: 'good' | 'fair' | 'poor' = 'good';
   
   if (packetsLost > 0.05 * packetsReceived || roundTripTime > 0.3 || bitrate < 500) {
@@ -209,13 +192,12 @@ const analyzeRTCStats = (stats: RTCStatsReport): CallQualityStats => {
     bitrate: Math.round(bitrate),
     packetsLost,
     packetsReceived,
-    roundTripTime: Math.round(roundTripTime * 1000), // Convert to ms
-    jitter: Math.round(jitter * 1000), // Convert to ms
+    roundTripTime: Math.round(roundTripTime * 1000),
+    jitter: Math.round(jitter * 1000),
     quality
   };
 };
 
-// Screen Sharing
 export const startScreenShare = async (): Promise<MediaStream | null> => {
   try {
     const screenStream = await navigator.mediaDevices.getDisplayMedia({
@@ -229,7 +211,6 @@ export const startScreenShare = async (): Promise<MediaStream | null> => {
     
     return screenStream;
   } catch (error) {
-    console.error('Error starting screen share:', error);
     return null;
   }
 };
@@ -240,7 +221,6 @@ export const stopScreenShare = (stream: MediaStream) => {
   });
 };
 
-// Audio/Video Controls
 export const toggleTrack = (stream: MediaStream, trackType: 'audio' | 'video'): boolean => {
   const tracks = trackType === 'audio' ? stream.getAudioTracks() : stream.getVideoTracks();
   
@@ -249,13 +229,12 @@ export const toggleTrack = (stream: MediaStream, trackType: 'audio' | 'video'): 
     tracks.forEach(track => {
       track.enabled = !isEnabled;
     });
-    return !isEnabled; // Return new state
+    return !isEnabled;
   }
   
   return false;
 };
 
-// Browser Compatibility
 export const checkWebRTCSupport = (): {
   isSupported: boolean;
   features: {
@@ -277,7 +256,6 @@ export const checkWebRTCSupport = (): {
   return { isSupported, features };
 };
 
-// Error Handling
 export const getErrorMessage = (error: any): string => {
   if (error.name === 'NotAllowedError') {
     return 'Camera and microphone access denied. Please allow permissions.';
@@ -294,7 +272,6 @@ export const getErrorMessage = (error: any): string => {
   }
 };
 
-// Format utilities
 export const formatCallDuration = (milliseconds: number): string => {
   const totalSeconds = Math.floor(milliseconds / 1000);
   const hours = Math.floor(totalSeconds / 3600);

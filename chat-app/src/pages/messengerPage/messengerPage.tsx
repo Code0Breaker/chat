@@ -50,16 +50,11 @@ export default function MessengerPage() {
         });
 
         socket.on("reciveCall", (data: IPeerSignalMessage) => {
-            console.log("reciveCall event received, data=", data);
-            // Если пришли данные и либо peerData, либо signal присутствуют
             if (!data) {
-                console.warn("reciveCall: нет данных");
                 return;
             }
 
-            // Если в данных есть поле peerData, то используем его
             if (data.peerData) {
-                console.log("reciveCall (peerData):", data.peerData);
                 if (data.from && data.from.id !== localStorage._id) {
                     if (data.peerData.type === "offer") {
                         setOfferSignal(data.peerData);
@@ -67,20 +62,16 @@ export default function MessengerPage() {
                         setCaller({ id: data.from.id, roomId: data.roomId, name: data.from.name });
                         setOpen(true);
                     } else {
-                        console.log("Получен candidate (peerData):", data.peerData);
                         setCandidateSignal(prev => [...prev, data.peerData]);
                     }
                 }
-            } else {
-                console.warn("reciveCall: нет данных ни в peerData, ни в signal");
             }
         });
 
         return () => {
             socket.off("chat");
             socket.off("isTyping");
-            // socket.off("reciveCall");
-            // socket.off("acceptedPeerConnection");
+            socket.off("reciveCall");
         };
     }, [id, addToMessages, setUnreadMessages]);
 
@@ -98,7 +89,6 @@ export default function MessengerPage() {
 
     const setWatched = () => {
         const ids = unreadMessages?.filter((item) => item.chat._id === id).map((item) => item._id);
-        // chancgeUnwatchStatus(ids as string[]);
         removeUnreadById(ids as string[]);
     };
 

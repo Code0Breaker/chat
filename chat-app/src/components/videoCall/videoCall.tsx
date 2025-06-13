@@ -1,7 +1,21 @@
-import { useEffect, useRef, useState, useCallback } from 'react'
+import { useEffect, useRef, useState, useCallback, useMemo } from 'react'
 import Peer from 'simple-peer/simplepeer.min.js';
 import { socket } from '../../socket'
 import './VideoCall.css'
+import { 
+  getAvailableDevices, 
+  requestMediaPermissions, 
+  monitorCallQuality,
+  startScreenShare,
+  getErrorMessage,
+  checkWebRTCSupport,
+  switchCamera,
+  switchMicrophone,
+  MediaDevices,
+  CallQualityStats
+} from '../../utils/webrtc'
+
+const APP_VERSION = '1.0.0';
 
 interface VideoCallProps {
   setOpenVideoCall: (state: boolean) => void;
@@ -20,14 +34,19 @@ interface CallState {
   isConnecting: boolean;
   callDuration: number;
   networkQuality: 'good' | 'fair' | 'poor';
+  reconnecting: boolean;
+  qualityStats: CallQualityStats | null;
+}
+
+interface ConnectionStats {
+  bitrate: number;
+  packetsLost: number;
+  latency: number;
 }
 
 export const VideoCall = ({ setOpenVideoCall, openVideoCall, id }: VideoCallProps) => {
-  // Media state
   const [stream, setStream] = useState<MediaStream | null>(null)
   const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null)
-  
-  // Call state
   const [callAccepted, setCallAccepted] = useState(false)
   const [incomingCall, setIncomingCall] = useState(false)
   const [caller, setCaller] = useState<CallerData | null>(null)
@@ -36,46 +55,71 @@ export const VideoCall = ({ setOpenVideoCall, openVideoCall, id }: VideoCallProp
     isConnected: false,
     isConnecting: false,
     callDuration: 0,
-    networkQuality: 'good'
+    networkQuality: 'good',
+    reconnecting: false,
+    qualityStats: null
   })
-  
-  // Media controls
   const [isAudioMuted, setIsAudioMuted] = useState(false)
   const [isVideoMuted, setIsVideoMuted] = useState(false)
   const [isScreenSharing, setIsScreenSharing] = useState(false)
   const [showControls, setShowControls] = useState(true)
-  
-  // Error handling
   const [error, setError] = useState<string | null>(null)
   const [devicePermissionDenied, setDevicePermissionDenied] = useState(false)
+  const [availableDevices, setAvailableDevices] = useState<MediaDevices>({ cameras: [], microphones: [], speakers: [] })
+  const [selectedCamera, setSelectedCamera] = useState<string>('')
+  const [selectedMicrophone, setSelectedMicrophone] = useState<string>('')
+  const [connectionRetries, setConnectionRetries] = useState(0)
+  const [isFullscreen, setIsFullscreen] = useState(false)
+  const [isPictureInPicture, setIsPictureInPicture] = useState(false)
+  const [showSettings, setShowSettings] = useState(false)
   
-  // Refs
   const connectionRef = useRef<any>(null)
   const localVideoRef = useRef<HTMLVideoElement>(null)
   const remoteVideoRef = useRef<HTMLVideoElement>(null)
   const callTimerRef = useRef<NodeJS.Timeout | null>(null)
   const controlsTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const qualityMonitorRef = useRef<(() => void) | null>(null)
+  const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const videoContainerRef = useRef<HTMLDivElement>(null)
   
-  // STUN/TURN servers configuration
-  const iceServers = [
+  const iceServers = useMemo(() => [
     { urls: 'stun:stun.l.google.com:19302' },
     { urls: 'stun:stun1.l.google.com:19302' },
     { urls: 'stun:stun2.l.google.com:19302' },
-    { urls: 'stun:stun3.l.google.com:19302' },
-    { urls: 'stun:stun4.l.google.com:19302' },
-  ]
+    { urls: 'stun:stun.services.mozilla.com' },
+    { urls: 'stun:stun.stunprotocol.org:3478' },
+    { urls: 'stun:stun.ekiga.net' },
+    { urls: 'stun:stun.ideasip.com' },
+    { urls: 'stun:stun.rixtelecom.se' },
+    { urls: 'stun:stun.schlund.de' },
+    { urls: 'stun:stunserver.org' },
+    { urls: 'stun:stun.softjoys.com' },
+    { urls: 'stun:stun.voiparound.com' },
+    { urls: 'stun:stun.voipbuster.com' },
+    { urls: 'stun:stun.voipstunt.com' },
+    { urls: 'stun:stun.voxgratia.org' }
+  ], [])
 
-  // Initialize media devices and socket listeners
   useEffect(() => {
-    initializeMedia()
-    setupSocketListeners()
+    const checkSupport = async () => {
+      const { isSupported, features } = checkWebRTCSupport()
+      if (!isSupported) {
+        setError('WebRTC is not supported in this browser. Please use a modern browser.')
+        return
+      }
+      
+      await initializeDevices()
+      await initializeMedia()
+      setupSocketListeners()
+    }
+    
+    checkSupport()
     
     return () => {
       cleanup()
     }
   }, [])
 
-  // Call timer
   useEffect(() => {
     if (callAccepted && callState.isConnected) {
       callTimerRef.current = setInterval(() => {
@@ -85,7 +129,6 @@ export const VideoCall = ({ setOpenVideoCall, openVideoCall, id }: VideoCallProp
         }))
       }, 1000)
     }
-    
     return () => {
       if (callTimerRef.current) {
         clearInterval(callTimerRef.current)
@@ -93,14 +136,12 @@ export const VideoCall = ({ setOpenVideoCall, openVideoCall, id }: VideoCallProp
     }
   }, [callAccepted, callState.isConnected])
 
-  // Auto-hide controls
   useEffect(() => {
     if (showControls) {
       controlsTimeoutRef.current = setTimeout(() => {
         setShowControls(false)
       }, 5000)
     }
-    
     return () => {
       if (controlsTimeoutRef.current) {
         clearTimeout(controlsTimeoutRef.current)
@@ -108,44 +149,64 @@ export const VideoCall = ({ setOpenVideoCall, openVideoCall, id }: VideoCallProp
     }
   }, [showControls])
 
-  const initializeMedia = async () => {
+  const initializeDevices = async () => {
+    try {
+      const devices = await getAvailableDevices()
+      setAvailableDevices(devices)
+      
+      // Set default devices
+      if (devices.cameras.length > 0 && !selectedCamera) {
+        setSelectedCamera(devices.cameras[0].deviceId)
+      }
+      if (devices.microphones.length > 0 && !selectedMicrophone) {
+        setSelectedMicrophone(devices.microphones[0].deviceId)
+      }
+    } catch (error) {
+      console.error('Failed to initialize devices:', error)
+    }
+  }
+
+  const initializeMedia = async (retryCount = 0) => {
     try {
       setError(null)
-      const devices = await navigator.mediaDevices.enumerateDevices()
-      const videoDevices = devices.filter(device => device.kind === 'videoinput')
-      const audioDevices = devices.filter(device => device.kind === 'audioinput')
+      setCallState(prev => ({ ...prev, reconnecting: retryCount > 0 }))
       
-      if (videoDevices.length === 0 && audioDevices.length === 0) {
+      if (availableDevices.cameras.length === 0 && availableDevices.microphones.length === 0) {
         setError('No camera or microphone found')
         return
       }
 
-      const mediaStream = await navigator.mediaDevices.getUserMedia({
-        video: videoDevices.length > 0 ? {
-          width: { ideal: 1280 },
-          height: { ideal: 720 },
-          frameRate: { ideal: 30 }
-        } : false,
-        audio: audioDevices.length > 0 ? {
-          echoCancellation: true,
-          noiseSuppression: true,
-          autoGainControl: true
-        } : false
-      })
+      const mediaStream = await requestMediaPermissions(
+        availableDevices.cameras.length > 0,
+        availableDevices.microphones.length > 0
+      )
+
+      if (!mediaStream) {
+        throw new Error('Failed to get media stream')
+      }
 
       setStream(mediaStream)
       if (localVideoRef.current) {
         localVideoRef.current.srcObject = mediaStream
       }
+      
+      setCallState(prev => ({ ...prev, reconnecting: false }))
+      setConnectionRetries(0)
     } catch (error: any) {
-      console.error('Error accessing media devices:', error)
+      const errorMessage = getErrorMessage(error)
+      
       if (error.name === 'NotAllowedError') {
         setDevicePermissionDenied(true)
-        setError('Camera and microphone access denied. Please allow permissions and refresh.')
-      } else if (error.name === 'NotFoundError') {
-        setError('No camera or microphone found')
-      } else {
-        setError('Failed to access camera and microphone')
+      }
+      
+      setError(errorMessage)
+      setCallState(prev => ({ ...prev, reconnecting: false }))
+      
+      // Auto-retry logic
+      if (retryCount < 3 && error.name !== 'NotAllowedError') {
+        setTimeout(() => {
+          initializeMedia(retryCount + 1)
+        }, 2000 * (retryCount + 1))
       }
     }
   }
@@ -181,7 +242,12 @@ export const VideoCall = ({ setOpenVideoCall, openVideoCall, id }: VideoCallProp
       initiator,
       trickle: false,
       stream,
-      config: { iceServers }
+      config: { 
+        iceServers,
+        iceTransportPolicy: 'all',
+        bundlePolicy: 'max-bundle',
+        rtcpMuxPolicy: 'require'
+      }
     }) as any
 
     peer.on('signal', (data: any) => {
@@ -207,28 +273,61 @@ export const VideoCall = ({ setOpenVideoCall, openVideoCall, id }: VideoCallProp
       setCallState(prev => ({ 
         ...prev, 
         isConnected: true, 
-        isConnecting: false 
+        isConnecting: false,
+        reconnecting: false
       }))
+      
+      // Start quality monitoring
+      if (peer._pc && typeof monitorCallQuality === 'function') {
+        qualityMonitorRef.current = monitorCallQuality(peer._pc, (stats: CallQualityStats) => {
+          setCallState(prev => ({
+            ...prev,
+            networkQuality: stats.quality,
+            qualityStats: stats
+          }))
+        })
+      }
     })
 
     peer.on('connect', () => {
-      console.log('Peer connected successfully')
-      setCallState(prev => ({ ...prev, isConnected: true, isConnecting: false }))
+      setCallState(prev => ({ 
+        ...prev, 
+        isConnected: true, 
+        isConnecting: false,
+        reconnecting: false
+      }))
     })
 
     peer.on('error', (error: any) => {
       console.error('Peer connection error:', error)
-      setError('Connection failed. Please try again.')
-      setCallState(prev => ({ ...prev, isConnecting: false }))
+      const retries = connectionRetries
+      setConnectionRetries(prev => prev + 1)
+      
+      if (retries < 3) {
+        setCallState(prev => ({ ...prev, reconnecting: true }))
+        // Auto-reconnect after delay
+        reconnectTimeoutRef.current = setTimeout(() => {
+          if (stream) {
+            const newPeer = createPeerConnection(initiator, stream)
+            connectionRef.current = newPeer
+          }
+        }, 2000 * (retries + 1))
+      } else {
+        setError('Connection failed after multiple attempts. Please try again.')
+        setCallState(prev => ({ ...prev, isConnecting: false, reconnecting: false }))
+      }
     })
 
     peer.on('close', () => {
-      console.log('Peer connection closed')
+      if (qualityMonitorRef.current) {
+        qualityMonitorRef.current()
+        qualityMonitorRef.current = null
+      }
       endCall()
     })
 
     return peer
-  }, [id, caller])
+  }, [id, caller, connectionRetries, iceServers])
 
   const callUser = () => {
     if (!stream) {
@@ -273,7 +372,9 @@ export const VideoCall = ({ setOpenVideoCall, openVideoCall, id }: VideoCallProp
       isConnected: false,
       isConnecting: false,
       callDuration: 0,
-      networkQuality: 'good'
+      networkQuality: 'good',
+      reconnecting: false,
+      qualityStats: null
     })
     
     if (remoteVideoRef.current) {
@@ -306,10 +407,12 @@ export const VideoCall = ({ setOpenVideoCall, openVideoCall, id }: VideoCallProp
   const toggleScreenShare = async () => {
     try {
       if (!isScreenSharing) {
-        const screenStream = await navigator.mediaDevices.getDisplayMedia({
-          video: true,
-          audio: true
-        })
+        const screenStream = await startScreenShare()
+        
+        if (!screenStream) {
+          setError('Failed to start screen sharing')
+          return
+        }
         
         const videoTrack = screenStream.getVideoTracks()[0]
         if (connectionRef.current && connectionRef.current.streams && connectionRef.current.streams[0]) {
@@ -319,32 +422,116 @@ export const VideoCall = ({ setOpenVideoCall, openVideoCall, id }: VideoCallProp
         
         videoTrack.onended = () => {
           setIsScreenSharing(false)
-          // Switch back to camera
           if (stream && connectionRef.current && connectionRef.current.streams && connectionRef.current.streams[0]) {
             const cameraTrack = stream.getVideoTracks()[0]
             connectionRef.current.replaceTrack(videoTrack, cameraTrack, stream)
           }
+          socket.emit('screenShareEnd', { roomId: id, userId: localStorage.getItem('_id') })
         }
         
         setIsScreenSharing(true)
+        socket.emit('screenShareStart', { roomId: id, userId: localStorage.getItem('_id') })
       } else {
-        // Switch back to camera
         if (stream && connectionRef.current && connectionRef.current.streams && connectionRef.current.streams[0]) {
           const cameraTrack = stream.getVideoTracks()[0]
           const currentTrack = connectionRef.current.streams[0].getVideoTracks()[0]
           connectionRef.current.replaceTrack(currentTrack, cameraTrack, stream)
         }
         setIsScreenSharing(false)
+        socket.emit('screenShareEnd', { roomId: id, userId: localStorage.getItem('_id') })
+      }
+    } catch (error: any) {
+      setError(getErrorMessage(error) || 'Failed to share screen')
+    }
+  }
+
+  const switchCameraDevice = async (deviceId: string) => {
+    if (!stream) return
+    
+    try {
+      const newStream = await switchCamera(stream, deviceId)
+      if (newStream) {
+        setStream(newStream)
+        setSelectedCamera(deviceId)
+        
+        if (localVideoRef.current) {
+          localVideoRef.current.srcObject = newStream
+        }
+        
+        // Update the peer connection with new stream
+        if (connectionRef.current) {
+          const videoTrack = newStream.getVideoTracks()[0]
+          connectionRef.current.replaceTrack(
+            connectionRef.current.streams[0].getVideoTracks()[0],
+            videoTrack,
+            newStream
+          )
+        }
       }
     } catch (error) {
-      console.error('Error toggling screen share:', error)
-      setError('Failed to share screen')
+      setError('Failed to switch camera')
+    }
+  }
+
+  const switchMicrophoneDevice = async (deviceId: string) => {
+    if (!stream) return
+    
+    try {
+      const newStream = await switchMicrophone(stream, deviceId)
+      if (newStream) {
+        setStream(newStream)
+        setSelectedMicrophone(deviceId)
+        
+        // Update the peer connection with new stream
+        if (connectionRef.current) {
+          const audioTrack = newStream.getAudioTracks()[0]
+          connectionRef.current.replaceTrack(
+            connectionRef.current.streams[0].getAudioTracks()[0],
+            audioTrack,
+            newStream
+          )
+        }
+      }
+    } catch (error) {
+      setError('Failed to switch microphone')
+    }
+  }
+
+  const toggleFullscreen = () => {
+    if (!videoContainerRef.current) return
+    
+    if (!isFullscreen) {
+      if (videoContainerRef.current.requestFullscreen) {
+        videoContainerRef.current.requestFullscreen()
+      }
+    } else {
+      if (document.exitFullscreen) {
+        document.exitFullscreen()
+      }
+    }
+    setIsFullscreen(!isFullscreen)
+  }
+
+  const togglePictureInPicture = async () => {
+    if (!remoteVideoRef.current) return
+    
+    try {
+      if (!isPictureInPicture) {
+        await remoteVideoRef.current.requestPictureInPicture()
+        setIsPictureInPicture(true)
+      } else {
+        await document.exitPictureInPicture()
+        setIsPictureInPicture(false)
+      }
+    } catch (error) {
+      setError('Picture-in-picture not supported')
     }
   }
 
   const cleanup = () => {
     if (connectionRef.current) {
       connectionRef.current.destroy()
+      connectionRef.current = null
     }
     
     if (stream) {
@@ -353,11 +540,37 @@ export const VideoCall = ({ setOpenVideoCall, openVideoCall, id }: VideoCallProp
     
     if (callTimerRef.current) {
       clearInterval(callTimerRef.current)
+      callTimerRef.current = null
     }
     
     if (controlsTimeoutRef.current) {
       clearTimeout(controlsTimeoutRef.current)
+      controlsTimeoutRef.current = null
     }
+    
+    if (qualityMonitorRef.current) {
+      qualityMonitorRef.current()
+      qualityMonitorRef.current = null
+    }
+    
+    if (reconnectTimeoutRef.current) {
+      clearTimeout(reconnectTimeoutRef.current)
+      reconnectTimeoutRef.current = null
+    }
+    
+    // Reset all states
+    setCallState({
+      isConnected: false,
+      isConnecting: false,
+      callDuration: 0,
+      networkQuality: 'good',
+      reconnecting: false,
+      qualityStats: null
+    })
+    setConnectionRetries(0)
+    setIsFullscreen(false)
+    setIsPictureInPicture(false)
+    setShowSettings(false)
   }
 
   const formatCallDuration = (seconds: number) => {
@@ -384,7 +597,7 @@ export const VideoCall = ({ setOpenVideoCall, openVideoCall, id }: VideoCallProp
         <div className="permission-denied">
           <h3>Camera and Microphone Access Required</h3>
           <p>Please allow camera and microphone permissions to use video calling.</p>
-          <button onClick={initializeMedia} className="retry-button">
+          <button onClick={() => initializeMedia(0)} className="retry-button">
             Retry
           </button>
         </div>
@@ -394,7 +607,6 @@ export const VideoCall = ({ setOpenVideoCall, openVideoCall, id }: VideoCallProp
 
   return (
     <>
-      {/* Incoming Call Modal */}
       {incomingCall && caller && (
         <div className="incoming-call-modal">
           <div className="incoming-call-content">
@@ -414,10 +626,10 @@ export const VideoCall = ({ setOpenVideoCall, openVideoCall, id }: VideoCallProp
         </div>
       )}
 
-      {/* Video Call Interface */}
       {(openVideoCall || callAccepted) && (
         <div 
-          className="video-call-container"
+          ref={videoContainerRef}
+          className={`video-call-container ${isFullscreen ? 'fullscreen' : ''}`}
           onMouseMove={() => setShowControls(true)}
         >
           {error && (
@@ -427,25 +639,47 @@ export const VideoCall = ({ setOpenVideoCall, openVideoCall, id }: VideoCallProp
             </div>
           )}
 
-          {/* Call Status */}
           <div className="call-status">
-            {callState.isConnecting && <span className="connecting">Connecting...</span>}
-            {callState.isConnected && (
-              <>
-                <span className="connected">Connected</span>
-                <span className="call-duration">{formatCallDuration(callState.callDuration)}</span>
-                <span className={`network-quality ${callState.networkQuality}`}>
-                  {callState.networkQuality === 'good' && '🟢'}
-                  {callState.networkQuality === 'fair' && '🟡'}
-                  {callState.networkQuality === 'poor' && '🔴'}
-                </span>
-              </>
-            )}
+            <div className="status-left">
+              {callState.reconnecting && <span className="reconnecting">Reconnecting...</span>}
+              {callState.isConnecting && !callState.reconnecting && <span className="connecting">Connecting...</span>}
+              {callState.isConnected && (
+                <>
+                  <span className="connected">Connected</span>
+                  <span className="call-duration">{formatCallDuration(callState.callDuration)}</span>
+                  <span 
+                    className={`network-quality ${callState.networkQuality}`}
+                    title={callState.qualityStats ? 
+                      `Bitrate: ${callState.qualityStats.bitrate} kbps, RTT: ${callState.qualityStats.roundTripTime}ms` : 
+                      'Network quality'}
+                  >
+                    {callState.networkQuality === 'good' && '🟢'}
+                    {callState.networkQuality === 'fair' && '🟡'}
+                    {callState.networkQuality === 'poor' && '🔴'}
+                  </span>
+                  {connectionRetries > 0 && (
+                    <span className="retry-count" title="Connection attempts">
+                      🔄 {connectionRetries}
+                    </span>
+                  )}
+                </>
+              )}
+            </div>
+            <div className="status-right">
+              <button 
+                className="settings-btn"
+                onClick={() => setShowSettings(!showSettings)}
+                title="Settings"
+              >
+                ⚙️
+              </button>
+              <div className="version-info">
+                v{APP_VERSION}
+              </div>
+            </div>
           </div>
 
-          {/* Video Layout */}
           <div className="video-layout">
-            {/* Remote Video (Main) */}
             <div className="remote-video-container">
               <video 
                 ref={remoteVideoRef}
@@ -460,7 +694,6 @@ export const VideoCall = ({ setOpenVideoCall, openVideoCall, id }: VideoCallProp
               )}
             </div>
 
-            {/* Local Video (Picture-in-Picture) */}
             <div className="local-video-container">
               <video 
                 ref={localVideoRef}
@@ -477,51 +710,118 @@ export const VideoCall = ({ setOpenVideoCall, openVideoCall, id }: VideoCallProp
             </div>
           </div>
 
-          {/* Call Controls */}
+          {showSettings && (
+            <div className="settings-panel">
+              <div className="settings-section">
+                <h4>Camera</h4>
+                <select 
+                  value={selectedCamera} 
+                  onChange={(e) => switchCameraDevice(e.target.value)}
+                  disabled={!callState.isConnected}
+                >
+                  {availableDevices.cameras.map(camera => (
+                    <option key={camera.deviceId} value={camera.deviceId}>
+                      {camera.label || `Camera ${camera.deviceId.substring(0, 5)}`}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              
+              <div className="settings-section">
+                <h4>Microphone</h4>
+                <select 
+                  value={selectedMicrophone} 
+                  onChange={(e) => switchMicrophoneDevice(e.target.value)}
+                  disabled={!callState.isConnected}
+                >
+                  {availableDevices.microphones.map(mic => (
+                    <option key={mic.deviceId} value={mic.deviceId}>
+                      {mic.label || `Microphone ${mic.deviceId.substring(0, 5)}`}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              
+              {callState.qualityStats && (
+                <div className="settings-section quality-stats">
+                  <h4>Connection Stats</h4>
+                  <div className="stats-grid">
+                    <div>Bitrate: {callState.qualityStats.bitrate} kbps</div>
+                    <div>Latency: {callState.qualityStats.roundTripTime}ms</div>
+                    <div>Packets Lost: {callState.qualityStats.packetsLost}</div>
+                    <div>Jitter: {callState.qualityStats.jitter}ms</div>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
           {showControls && (
             <div className="call-controls">
-              <button 
-                onClick={toggleAudio}
-                className={`control-btn ${isAudioMuted ? 'muted' : ''}`}
-                title={isAudioMuted ? 'Unmute' : 'Mute'}
-              >
-                {isAudioMuted ? '🔇' : '🎤'}
-              </button>
-              
-              <button 
-                onClick={toggleVideo}
-                className={`control-btn ${isVideoMuted ? 'muted' : ''}`}
-                title={isVideoMuted ? 'Turn on camera' : 'Turn off camera'}
-              >
-                {isVideoMuted ? '📹' : '📷'}
-              </button>
-              
-              <button 
-                onClick={toggleScreenShare}
-                className={`control-btn ${isScreenSharing ? 'active' : ''}`}
-                title={isScreenSharing ? 'Stop sharing' : 'Share screen'}
-              >
-                🖥️
-              </button>
-              
-              {!callAccepted && !callState.isConnecting && (
+              <div className="primary-controls">
                 <button 
-                  onClick={callUser}
-                  className="control-btn call-btn"
-                  disabled={!stream}
-                  title="Start call"
+                  onClick={toggleAudio}
+                  className={`control-btn ${isAudioMuted ? 'muted' : ''}`}
+                  title={isAudioMuted ? 'Unmute' : 'Mute'}
+                >
+                  {isAudioMuted ? '🔇' : '🎤'}
+                </button>
+                
+                <button 
+                  onClick={toggleVideo}
+                  className={`control-btn ${isVideoMuted ? 'muted' : ''}`}
+                  title={isVideoMuted ? 'Turn on camera' : 'Turn off camera'}
+                >
+                  {isVideoMuted ? '📹' : '📷'}
+                </button>
+                
+                <button 
+                  onClick={toggleScreenShare}
+                  className={`control-btn ${isScreenSharing ? 'active' : ''}`}
+                  title={isScreenSharing ? 'Stop sharing' : 'Share screen'}
+                >
+                  🖥️
+                </button>
+                
+                {!callAccepted && !callState.isConnecting && (
+                  <button 
+                    onClick={callUser}
+                    className="control-btn call-btn"
+                    disabled={!stream}
+                    title="Start call"
+                  >
+                    📞
+                  </button>
+                )}
+                
+                <button 
+                  onClick={endCall}
+                  className="control-btn end-call-btn"
+                  title="End call"
                 >
                   📞
                 </button>
-              )}
+              </div>
               
-              <button 
-                onClick={endCall}
-                className="control-btn end-call-btn"
-                title="End call"
-              >
-                📞
-              </button>
+              <div className="secondary-controls">
+                <button 
+                  onClick={toggleFullscreen}
+                  className="control-btn"
+                  title={isFullscreen ? 'Exit fullscreen' : 'Fullscreen'}
+                >
+                  {isFullscreen ? '🔳' : '⛶'}
+                </button>
+                
+                {remoteStream && (
+                  <button 
+                    onClick={togglePictureInPicture}
+                    className="control-btn"
+                    title="Picture in Picture"
+                  >
+                    📱
+                  </button>
+                )}
+              </div>
             </div>
           )}
         </div>
