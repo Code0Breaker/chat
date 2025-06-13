@@ -16,8 +16,8 @@ export default function MessengerPage() {
     const [unreadMessages, removeUnreadById, setUnreadMessages] = useStore(
         (state) => [state.unreadMessages, state.removeUnreadById, state.setUnreadMessages]
     );
-    const [incomingCall, setIncomingCall] = useState(false);
-    const [caller, setCaller] = useState<{ name: string; id: string; roomId: string } | null>(null);
+    const incomingCall = useStore(state => state.incomingCall);
+    const caller = useStore(state => state.caller);
     const [offerSignal, setOfferSignal] = useState<SignalData | null>(null);
     const [candidateSignal, setCandidateSignal] = useState<SignalData[]>([]);
     const [open, setOpen] = useState(false);
@@ -58,8 +58,6 @@ export default function MessengerPage() {
                 if (data.from && data.from.id !== localStorage._id) {
                     if (data.peerData.type === "offer") {
                         setOfferSignal(data.peerData);
-                        setIncomingCall(true);
-                        setCaller({ id: data.from.id, roomId: data.roomId, name: data.from.name });
                         setOpen(true);
                     } else {
                         setCandidateSignal(prev => [...prev, data.peerData]);

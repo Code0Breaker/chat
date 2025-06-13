@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { IMessage, IUser } from "../types";
+import { IMessage, IUser, CallerData } from "../types";
 
 interface CallParticipant {
   id: string;
@@ -101,6 +101,11 @@ interface Store {
   addRemoteStream: (stream: MediaStream) => void;
   removeRemoteStream: (stream: MediaStream) => void;
   clearRemoteStreams: () => void;
+
+  incomingCall: boolean;
+  caller: CallerData | null;
+  setIncomingCall: (incoming: boolean) => void;
+  setCaller: (caller: CallerData | null) => void;
 }
 
 export const userMediaStream = new BroadcastChannel('userMediaStream');
@@ -307,5 +312,10 @@ export const useStore = create<Store>((set, get) => ({
 
   clearRemoteStreams: () => set((state) => ({
     callState: { ...state.callState, remoteStreams: [] }
-  }))
+  })),
+
+  incomingCall: false,
+  caller: null,
+  setIncomingCall: (incoming) => set(() => ({ incomingCall: incoming })),
+  setCaller: (caller) => set(() => ({ caller })),
 }));

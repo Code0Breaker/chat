@@ -14,6 +14,7 @@ import {
   MediaDevices,
   CallQualityStats
 } from '../../utils/webrtc'
+import { useStore } from '../../store/store';
 
 const APP_VERSION = '1.0.0';
 
@@ -48,8 +49,6 @@ export const VideoCall = ({ setOpenVideoCall, openVideoCall, id }: VideoCallProp
   const [stream, setStream] = useState<MediaStream | null>(null)
   const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null)
   const [callAccepted, setCallAccepted] = useState(false)
-  const [incomingCall, setIncomingCall] = useState(false)
-  const [caller, setCaller] = useState<CallerData | null>(null)
   const [callerSignal, setCallerSignal] = useState<any>(null)
   const [callState, setCallState] = useState<CallState>({
     isConnected: false,
@@ -99,6 +98,11 @@ export const VideoCall = ({ setOpenVideoCall, openVideoCall, id }: VideoCallProp
     { urls: 'stun:stun.voipstunt.com' },
     { urls: 'stun:stun.voxgratia.org' }
   ], [])
+
+  const incomingCall = useStore(state => state.incomingCall);
+  const setIncomingCall = useStore(state => state.setIncomingCall);
+  const caller = useStore(state => state.caller);
+  const setCaller = useStore(state => state.setCaller);
 
   useEffect(() => {
     const checkSupport = async () => {
@@ -389,26 +393,26 @@ export const VideoCall = ({ setOpenVideoCall, openVideoCall, id }: VideoCallProp
   const setupSocketListeners = () => {
     // Handle incoming calls
     socket.on('receiveCall', (data) => {
-      console.log('Received call:', data)
+      console.log('Received call:', data);
       
       // Prevent duplicate call handling
-      if (incomingCall || callAccepted) {
-        console.log('Call already in progress, ignoring duplicate event')
-        return
+      if (useStore.getState().incomingCall || callAccepted) {
+        console.log('Call already in progress, ignoring duplicate event');
+        return;
       }
 
       // Store the offer signal
       if (data.signalData?.type === 'offer') {
-        console.log('Received offer signal, showing incoming call')
-        setIncomingCall(true)
-        setCaller({ ...data.from, roomId: data.roomId })
-        setCallerSignal(data.signalData)
+        console.log('Received offer signal, showing incoming call');
+        setIncomingCall(true);
+        setCaller({ ...data.from, roomId: data.roomId });
+        setCallerSignal(data.signalData);
         
         // Join the room if not already joined
         socket.emit('join', { 
           roomId: data.roomId, 
           userId: localStorage.getItem('_id') 
-        })
+        });
 
         // Force the incoming call modal to be visible
         const searchParams = new URLSearchParams(window.location.search);
@@ -416,9 +420,9 @@ export const VideoCall = ({ setOpenVideoCall, openVideoCall, id }: VideoCallProp
           setOpenVideoCall(true);
         }
       } else {
-        console.log('Received non-offer signal, ignoring:', data.signalData?.type)
+        console.log('Received non-offer signal, ignoring:', data.signalData?.type);
       }
-    })
+    });
 
     // Handle call accepted
     socket.on('callAccepted', (data) => {
@@ -941,7 +945,6 @@ export const VideoCall = ({ setOpenVideoCall, openVideoCall, id }: VideoCallProp
       console.log('Answering call with signal:', callerSignal);
       
       setCallAccepted(true);
-      setIncomingCall(false);
       setCallState(prev => ({ ...prev, isConnecting: true }));
       
       const peer = createPeerConnection(false, stream);
@@ -1004,7 +1007,6 @@ export const VideoCall = ({ setOpenVideoCall, openVideoCall, id }: VideoCallProp
       console.error('Error in answerCall:', error);
       setError('Failed to answer call. Please try again.');
       setCallAccepted(false);
-      setIncomingCall(false);
       setCallState(prev => ({ ...prev, isConnecting: false }));
     }
   };
@@ -1018,7 +1020,6 @@ export const VideoCall = ({ setOpenVideoCall, openVideoCall, id }: VideoCallProp
     socket.emit('endCall', { roomId: id })
     
     setCallAccepted(false)
-    setIncomingCall(false)
     setCaller(null)
     setCallerSignal(null)
     setRemoteStream(null)
