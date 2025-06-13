@@ -1,11 +1,81 @@
-.caller{
-    position: absolute;
-    padding: 30px;
-    background: rgb(139, 134, 134);
+.caller {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    padding: 40px;
+    border-radius: 20px;
+    text-align: center;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    color: white;
+    max-width: 400px;
+    width: 90%;
+    z-index: 1001;
+    animation: fadeIn 0.3s ease;
+}
+
+.callerInfo {
+    margin-bottom: 30px;
+}
+
+.callerInfo h3 {
+    font-size: 1.2rem;
+    opacity: 0.9;
+    margin-bottom: 0.5rem;
+    font-weight: normal;
+}
+
+.callerInfo h2 {
+    font-size: 2rem;
+    margin: 0;
+    font-weight: 700;
+}
+
+.callActions {
     display: flex;
+    gap: 20px;
     justify-content: center;
-    align-items: center;
-    flex-direction: column;
-    right:50px;
-    gap: 30px;
+}
+
+.answerBtn, .rejectBtn {
+    padding: 15px 30px;
+    border: none;
+    border-radius: 50px;
+    font-size: 1.1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    min-width: 120px;
+}
+
+.answerBtn {
+    background: linear-gradient(45deg, #00b894, #00cec9);
+    color: white;
+}
+
+.answerBtn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(0, 184, 148, 0.4);
+}
+
+.rejectBtn {
+    background: linear-gradient(45deg, #e74c3c, #ff4757);
+    color: white;
+}
+
+.rejectBtn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(231, 76, 60, 0.4);
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translate(-50%, -60%);
+    }
+    to {
+        opacity: 1;
+        transform: translate(-50%, -50%);
+    }
 }

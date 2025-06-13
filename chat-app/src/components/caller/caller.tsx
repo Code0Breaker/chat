@@ -1,9 +1,10 @@
-import { useNavigate } from "react-router-dom";
-import s from "./caller.module.css";
-import {FC} from "react";
+import { FC } from 'react';
+import { useNavigate } from 'react-router-dom';
+import s from './caller.module.css';
+import { CallerData } from '../../types';
 
 interface CallerProps {
-    caller: { name: string; id: string; roomId: string };
+    caller: CallerData;
     setOpen: (state: boolean) => void;
 }
 
@@ -12,14 +13,30 @@ export const Caller: FC<CallerProps> = ({ caller, setOpen }) => {
 
     const answerCall = () => {
         // Navigate to the call page as an answerer
-        navigate(`/messenger/call/${caller.roomId}?type=answer`);
+        console.log('Answering call, navigating to call page...');
+        navigate(`/messenger/call/${caller.roomId}?type=answer`, { replace: true });
+        setOpen(false);
+    };
+
+    const rejectCall = () => {
+        console.log('Rejecting call...');
         setOpen(false);
     };
 
     return (
         <div className={s.caller}>
-            <h3>{caller.name}</h3>
-            <button onClick={answerCall}>Answer</button>
+            <div className={s.callerInfo}>
+                <h3>Incoming call from</h3>
+                <h2>{caller.name}</h2>
+            </div>
+            <div className={s.callActions}>
+                <button onClick={answerCall} className={s.answerBtn}>
+                    📞 Answer
+                </button>
+                <button onClick={rejectCall} className={s.rejectBtn}>
+                    📞 Reject
+                </button>
+            </div>
         </div>
     );
 };

@@ -388,7 +388,6 @@ export const VideoCall = ({ setOpenVideoCall, openVideoCall, id }: VideoCallProp
 
   const setupSocketListeners = () => {
     // Handle incoming calls
-    // Use once to prevent duplicate events
     socket.on('receiveCall', (data) => {
       console.log('Received call:', data)
       
@@ -410,6 +409,12 @@ export const VideoCall = ({ setOpenVideoCall, openVideoCall, id }: VideoCallProp
           roomId: data.roomId, 
           userId: localStorage.getItem('_id') 
         })
+
+        // Force the incoming call modal to be visible
+        const searchParams = new URLSearchParams(window.location.search);
+        if (searchParams.get('type') === 'answer') {
+          setOpenVideoCall(true);
+        }
       } else {
         console.log('Received non-offer signal, ignoring:', data.signalData?.type)
       }
@@ -1239,6 +1244,38 @@ export const VideoCall = ({ setOpenVideoCall, openVideoCall, id }: VideoCallProp
     setCallerSignal(null)
     socket.emit('rejectCall', { roomId: caller?.roomId })
   }
+
+  // Check URL parameters for incoming call
+  useEffect(() => {
+    const searchParams = new URLSearchParams(window.location.search);
+    const isAnswer = searchParams.get('type') === 'answer';
+    
+    if (isAnswer) {
+      console.log('This is an answer call, waiting for offer signal...');
+      setIncomingCall(true);
+      setOpenVideoCall(true);
+    }
+  }, [setOpenVideoCall]);
+
+  // Initialize media devices when component mounts
+  useEffect(() => {
+    const initCall = async () => {
+      try {
+        await initializeDevices();
+      } catch (error) {
+        console.error('Failed to initialize devices:', error);
+        setError('Failed to initialize devices. Please check permissions.');
+      }
+    };
+
+    const searchParams = new URLSearchParams(window.location.search);
+    const isAnswer = searchParams.get('type') === 'answer';
+    
+    if (isAnswer) {
+      // For incoming calls, initialize devices immediately
+      initCall();
+    }
+  }, []);
 
   if (devicePermissionDenied) {
     return (
