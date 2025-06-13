@@ -106,14 +106,26 @@ export const VideoCall = ({ setOpenVideoCall, openVideoCall, id }: VideoCallProp
         // Check socket connection first
         if (!socket.connected) {
           console.log('Socket not connected, attempting to connect...')
+          
+          // Try to reconnect with polling first
+          socket.io.opts.transports = ['polling']
           socket.connect()
-        }
 
-        // Wait for socket connection
-        if (!socket.connected) {
+          // Wait for initial connection
           await new Promise((resolve, reject) => {
             const timeout = setTimeout(() => {
-              reject(new Error('Socket connection timeout'))
+              // If polling fails, try WebSocket
+              socket.io.opts.transports = ['websocket']
+              socket.connect()
+
+              const wsTimeout = setTimeout(() => {
+                reject(new Error('All connection attempts failed'))
+              }, 5000)
+
+              socket.once('connect', () => {
+                clearTimeout(wsTimeout)
+                resolve(true)
+              })
             }, 5000)
 
             socket.once('connect', () => {
@@ -122,11 +134,18 @@ export const VideoCall = ({ setOpenVideoCall, openVideoCall, id }: VideoCallProp
             })
 
             socket.once('connect_error', (error) => {
-              clearTimeout(timeout)
-              reject(error)
+              console.warn('Connection error:', error)
+              // Don't reject yet, let the WebSocket attempt happen
             })
           })
         }
+
+        // Verify connection
+        if (!socket.connected) {
+          throw new Error('Failed to establish socket connection')
+        }
+
+        console.log('Socket connected successfully with transport:', socket.io.engine.transport.name)
 
         const { isSupported, features } = checkWebRTCSupport()
         if (!isSupported) {

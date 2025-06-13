@@ -34,12 +34,17 @@ interface ActiveCall {
 
 @WebSocketGateway({
   cors: {
-    origin: ['https://chat.animehub.club', 'http://localhost:3004'],
-    methods: ['GET', 'POST'],
+    origin: [
+      'https://chat-front.animehub.club',
+      'https://chat.animehub.club',
+      'http://localhost:3004'
+    ],
+    methods: ['GET', 'POST', 'OPTIONS'],
     credentials: true,
-    allowedHeaders: ['Authorization', 'Bearer']
+    allowedHeaders: ['Authorization', 'Bearer', 'Content-Type'],
+    exposedHeaders: ['Authorization']
   },
-  transports: ['websocket', 'polling'],
+  transports: ['polling', 'websocket'],
   path: '/socket.io/',
   allowEIO3: true,
   serveClient: false,
@@ -47,7 +52,14 @@ interface ActiveCall {
   pingInterval: 25000,
   upgradeTimeout: 10000,
   allowUpgrades: true,
-  cookie: false
+  cookie: {
+    name: 'io',
+    httpOnly: true,
+    path: '/',
+    sameSite: 'strict'
+  },
+  connectTimeout: 45000,
+  maxHttpBufferSize: 1e8
 })
 export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer()
