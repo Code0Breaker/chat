@@ -389,7 +389,7 @@ export const VideoCall = ({ setOpenVideoCall, openVideoCall, id }: VideoCallProp
   const setupSocketListeners = () => {
     // Handle incoming calls
     // Use once to prevent duplicate events
-    socket.once('receiveCall', (data) => {
+    socket.on('receiveCall', (data) => {
       console.log('Received call:', data)
       
       // Prevent duplicate call handling
@@ -398,24 +398,21 @@ export const VideoCall = ({ setOpenVideoCall, openVideoCall, id }: VideoCallProp
         return
       }
 
-      setIncomingCall(true)
-      setCaller({ ...data.from, roomId: data.roomId })
-      setCallerSignal(data.signalData)
-      
-      // Join the room if not already joined
-      socket.emit('join', { 
-        roomId: data.roomId, 
-        userId: localStorage.getItem('_id') 
-      })
-
-      // Re-listen for next call after this one is handled
-      socket.on('receiveCall', (newData) => {
-        if (!incomingCall && !callAccepted) {
-          setIncomingCall(true)
-          setCaller({ ...newData.from, roomId: newData.roomId })
-          setCallerSignal(newData.signalData)
-        }
-      })
+      // Store the offer signal
+      if (data.signalData?.type === 'offer') {
+        console.log('Received offer signal, showing incoming call')
+        setIncomingCall(true)
+        setCaller({ ...data.from, roomId: data.roomId })
+        setCallerSignal(data.signalData)
+        
+        // Join the room if not already joined
+        socket.emit('join', { 
+          roomId: data.roomId, 
+          userId: localStorage.getItem('_id') 
+        })
+      } else {
+        console.log('Received non-offer signal, ignoring:', data.signalData?.type)
+      }
     })
 
     // Handle call accepted
@@ -493,12 +490,15 @@ export const VideoCall = ({ setOpenVideoCall, openVideoCall, id }: VideoCallProp
       }
     }) as any
 
+    // Queue for ICE candidates before connection
+    const iceCandidateQueue: RTCIceCandidate[] = [];
+
     // Handle signaling
     peer.on('signal', (data: any) => {
       console.log('Generated signal:', { type: data.type, hasCandidate: !!data.candidate })
       
       if (initiator) {
-        // If we're the caller, send the offer or ICE candidate
+        // If we're the caller
         if (data.type === 'offer') {
           console.log('Sending offer to remote peer')
           socket.emit('callUser', {
@@ -510,15 +510,21 @@ export const VideoCall = ({ setOpenVideoCall, openVideoCall, id }: VideoCallProp
             }
           })
         } else if (data.candidate) {
-          console.log('Sending ICE candidate to remote peer')
-          socket.emit('new-ice-candidate', {
-            candidate: data.candidate,
-            roomId: id,
-            from: localStorage.getItem('_id')
-          })
+          // Queue ICE candidates if connection not established
+          if (!callState.isConnected) {
+            console.log('Queueing ICE candidate for later')
+            iceCandidateQueue.push(data.candidate)
+          } else {
+            console.log('Sending ICE candidate to remote peer')
+            socket.emit('new-ice-candidate', {
+              candidate: data.candidate,
+              roomId: id,
+              from: localStorage.getItem('_id')
+            })
+          }
         }
       } else {
-        // If we're the answerer, send the answer or ICE candidate
+        // If we're the answerer
         if (data.type === 'answer') {
           console.log('Sending answer to remote peer')
           socket.emit('answerCall', { 
@@ -530,12 +536,18 @@ export const VideoCall = ({ setOpenVideoCall, openVideoCall, id }: VideoCallProp
             }
           })
         } else if (data.candidate) {
-          console.log('Sending ICE candidate to remote peer')
-          socket.emit('new-ice-candidate', {
-            candidate: data.candidate,
-            roomId: id,
-            from: localStorage.getItem('_id')
-          })
+          // Queue ICE candidates if connection not established
+          if (!callState.isConnected) {
+            console.log('Queueing ICE candidate for later')
+            iceCandidateQueue.push(data.candidate)
+          } else {
+            console.log('Sending ICE candidate to remote peer')
+            socket.emit('new-ice-candidate', {
+              candidate: data.candidate,
+              roomId: id,
+              from: localStorage.getItem('_id')
+            })
+          }
         }
       }
     })
@@ -581,12 +593,26 @@ export const VideoCall = ({ setOpenVideoCall, openVideoCall, id }: VideoCallProp
     })
 
     peer.on('connect', () => {
+      console.log('Peer connection established')
       setCallState(prev => ({ 
         ...prev, 
         isConnected: true, 
         isConnecting: false,
         reconnecting: false
       }))
+
+      // Send queued ICE candidates
+      if (iceCandidateQueue.length > 0) {
+        console.log('Sending queued ICE candidates:', iceCandidateQueue.length)
+        iceCandidateQueue.forEach(candidate => {
+          socket.emit('new-ice-candidate', {
+            candidate,
+            roomId: id,
+            from: localStorage.getItem('_id')
+          })
+        })
+        iceCandidateQueue.length = 0 // Clear the queue
+      }
     })
 
     peer.on('error', (error: any) => {
