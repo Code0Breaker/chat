@@ -130,20 +130,52 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     @MessageBody() data: { roomId: string; userId: string },
     @ConnectedSocket() client: Socket,
   ) {
-    const { roomId, userId } = data;
-    
-    // Store user-socket mapping
-    if (userId) {
-      this.userSocketMap.set(userId, client.id);
-      this.users[client.id] = userId;
+    try {
+      const { roomId, userId } = data;
+      
+      // Store user-socket mapping
+      if (userId) {
+        this.userSocketMap.set(userId, client.id);
+        this.users[client.id] = userId;
+      }
+      
+      // Join the room
+      client.join(roomId);
+      console.log(`User ${userId} joined room ${roomId}`);
+      
+      // Check for active calls in this room
+      const activeCall = this.activeCalls.get(roomId);
+      if (activeCall) {
+        console.log(`Found active call in room ${roomId}`);
+      }
+      
+      // Emit updated users list
+      this.server.emit('users', Object.values(this.users));
+    } catch (error) {
+      console.error('Error in handleJoin:', error);
     }
-    
-    // Join the room
-    client.join(roomId);
-    console.log(`User ${userId} joined room ${roomId}`);
-    
-    // Emit updated users list
-    this.server.emit('users', Object.values(this.users));
+  }
+
+  @SubscribeMessage('leave')
+  handleLeave(
+    @MessageBody() data: { roomId: string; userId: string },
+    @ConnectedSocket() client: Socket,
+  ) {
+    try {
+      const { roomId, userId } = data;
+      
+      // Leave the room
+      client.leave(roomId);
+      console.log(`User ${userId} left room ${roomId}`);
+      
+      // Check if there's an active call and handle cleanup if needed
+      const activeCall = this.activeCalls.get(roomId);
+      if (activeCall && activeCall.participants.includes(userId)) {
+        this.handleCallCleanupOnDisconnect(client.id);
+      }
+    } catch (error) {
+      console.error('Error in handleLeave:', error);
+    }
   }
 
   @SubscribeMessage('isTyping')
@@ -170,7 +202,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
       this.activeCalls.set(callData.roomId, activeCall);
       
       // Broadcast call to room (excluding sender)
-      client.broadcast.to(callData.roomId).emit('reciveCall', {
+      client.broadcast.to(callData.roomId).emit('receiveCall', {
         ...callData,
         timestamp: new Date().toISOString()
       });

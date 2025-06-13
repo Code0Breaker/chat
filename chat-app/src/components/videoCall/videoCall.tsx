@@ -115,9 +115,17 @@ export const VideoCall = ({ setOpenVideoCall, openVideoCall, id }: VideoCallProp
           return
         }
 
+        // Set up socket listeners first
+        setupSocketListeners()
+
+        // Join the room
+        socket.emit('join', { 
+          roomId: id, 
+          userId: localStorage.getItem('_id') 
+        })
+
         // Initialize devices and media
         await initializeDevices()
-        setupSocketListeners()
 
         // Add device change listener
         navigator.mediaDevices.addEventListener('devicechange', async () => {
@@ -136,8 +144,13 @@ export const VideoCall = ({ setOpenVideoCall, openVideoCall, id }: VideoCallProp
       cleanup()
       // Remove device change listener
       navigator.mediaDevices.removeEventListener('devicechange', initializeDevices)
+      // Leave the room
+      socket.emit('leave', { 
+        roomId: id, 
+        userId: localStorage.getItem('_id') 
+      })
     }
-  }, [])
+  }, [id])
 
   useEffect(() => {
     if (callAccepted && callState.isConnected) {
@@ -309,11 +322,17 @@ export const VideoCall = ({ setOpenVideoCall, openVideoCall, id }: VideoCallProp
 
   const setupSocketListeners = () => {
     // Handle incoming calls
-    socket.on('reciveCall', (data) => {
+    socket.on('receiveCall', (data) => {
       console.log('Received call:', data)
       setIncomingCall(true)
       setCaller({ ...data.from, roomId: data.roomId })
       setCallerSignal(data.signalData)
+      
+      // Join the room if not already joined
+      socket.emit('join', { 
+        roomId: data.roomId, 
+        userId: localStorage.getItem('_id') 
+      })
     })
 
     // Handle call accepted
@@ -348,7 +367,7 @@ export const VideoCall = ({ setOpenVideoCall, openVideoCall, id }: VideoCallProp
     })
 
     return () => {
-      socket.off('reciveCall')
+      socket.off('receiveCall')
       socket.off('callAccepted')
       socket.off('callEnded')
       socket.off('new-ice-candidate')
