@@ -188,6 +188,16 @@ export const VideoCall = ({ setOpenVideoCall, openVideoCall, id }: VideoCallProp
       setStream(mediaStream)
       if (localVideoRef.current) {
         localVideoRef.current.srcObject = mediaStream
+        await localVideoRef.current.play().catch(error => {
+          console.error('Error playing local video:', error)
+        })
+      }
+      
+      // Auto-start call if we're the initiator
+      const searchParams = new URLSearchParams(window.location.search)
+      const isInitiator = !searchParams.get('type')
+      if (isInitiator) {
+        callUser()
       }
       
       setCallState(prev => ({ ...prev, reconnecting: false }))
@@ -212,13 +222,17 @@ export const VideoCall = ({ setOpenVideoCall, openVideoCall, id }: VideoCallProp
   }
 
   const setupSocketListeners = () => {
+    // Handle incoming calls
     socket.on('reciveCall', (data) => {
+      console.log('Received call:', data)
       setIncomingCall(true)
       setCaller({ ...data.from, roomId: data.roomId })
       setCallerSignal(data.signalData)
     })
 
+    // Handle call accepted
     socket.on('callAccepted', (signal) => {
+      console.log('Call accepted:', signal)
       setCallAccepted(true)
       setCallState(prev => ({ ...prev, isConnecting: true }))
       if (connectionRef.current) {
@@ -226,7 +240,24 @@ export const VideoCall = ({ setOpenVideoCall, openVideoCall, id }: VideoCallProp
       }
     })
 
+    // Handle call ended
     socket.on('callEnded', () => {
+      console.log('Call ended')
+      endCall()
+    })
+
+    // Handle ICE candidates
+    socket.on('new-ice-candidate', (data) => {
+      console.log('Received ICE candidate:', data)
+      if (connectionRef.current && data.candidate) {
+        connectionRef.current.signal(data.candidate)
+      }
+    })
+
+    // Handle call rejected
+    socket.on('callRejected', (data) => {
+      console.log('Call rejected:', data)
+      setError(`Call rejected: ${data.reason || 'User busy'}`)
       endCall()
     })
 
@@ -234,23 +265,27 @@ export const VideoCall = ({ setOpenVideoCall, openVideoCall, id }: VideoCallProp
       socket.off('reciveCall')
       socket.off('callAccepted')
       socket.off('callEnded')
+      socket.off('new-ice-candidate')
+      socket.off('callRejected')
     }
   }
 
   const createPeerConnection = useCallback((initiator: boolean, stream: MediaStream) => {
     const peer = new Peer({
       initiator,
-      trickle: false,
+      trickle: true, // Enable trickle ICE for better connection establishment
       stream,
       config: { 
         iceServers,
         iceTransportPolicy: 'all',
         bundlePolicy: 'max-bundle',
-        rtcpMuxPolicy: 'require'
+        rtcpMuxPolicy: 'require',
+        sdpSemantics: 'unified-plan'
       }
     }) as any
 
     peer.on('signal', (data: any) => {
+      console.log('Generated signal:', data)
       if (initiator) {
         socket.emit('callUser', {
           roomId: id,
@@ -265,10 +300,26 @@ export const VideoCall = ({ setOpenVideoCall, openVideoCall, id }: VideoCallProp
       }
     })
 
+    // Handle ICE candidates
+    peer.on('icecandidate', (candidate: RTCIceCandidate) => {
+      console.log('Generated ICE candidate:', candidate)
+      if (candidate) {
+        socket.emit('new-ice-candidate', {
+          candidate,
+          roomId: id,
+          from: localStorage.getItem('_id')
+        })
+      }
+    })
+
     peer.on('stream', (remoteStream: MediaStream) => {
+      console.log('Received remote stream')
       setRemoteStream(remoteStream)
       if (remoteVideoRef.current) {
         remoteVideoRef.current.srcObject = remoteStream
+        remoteVideoRef.current.play().catch(error => {
+          console.error('Error playing remote video:', error)
+        })
       }
       setCallState(prev => ({ 
         ...prev, 
