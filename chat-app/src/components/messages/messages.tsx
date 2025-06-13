@@ -78,7 +78,7 @@ export default function Messages({ id }: { id: string }) {
             </div>
            
             <div className="chat-area-footer">
-                <Link to={`/messenger/call/${id}?type=call`} className='send-btn'>
+                <Link to={`/messenger/call/${id}`} className='send-btn'>
                 <svg
                     xmlns="http://www.w3.org/2000/svg"
                     viewBox="0 0 24 24"
