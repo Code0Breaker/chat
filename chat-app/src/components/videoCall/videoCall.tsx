@@ -50,7 +50,7 @@ export const VideoCall = ({ setOpenVideoCall, openVideoCall, id }: VideoCallProp
   const [devicePermissionDenied, setDevicePermissionDenied] = useState(false)
   
   // Refs
-  const connectionRef = useRef<Peer.Instance | null>(null)
+  const connectionRef = useRef<any>(null)
   const localVideoRef = useRef<HTMLVideoElement>(null)
   const remoteVideoRef = useRef<HTMLVideoElement>(null)
   const callTimerRef = useRef<NodeJS.Timeout | null>(null)
@@ -182,7 +182,7 @@ export const VideoCall = ({ setOpenVideoCall, openVideoCall, id }: VideoCallProp
       trickle: false,
       stream,
       config: { iceServers }
-    })
+    }) as any
 
     peer.on('signal', (data: any) => {
       if (initiator) {
