@@ -102,21 +102,40 @@ export const VideoCall = ({ setOpenVideoCall, openVideoCall, id }: VideoCallProp
 
   useEffect(() => {
     const checkSupport = async () => {
-      const { isSupported, features } = checkWebRTCSupport()
-      if (!isSupported) {
-        setError('WebRTC is not supported in this browser. Please use a modern browser.')
-        return
+      try {
+        const { isSupported, features } = checkWebRTCSupport()
+        if (!isSupported) {
+          setError('WebRTC is not supported in this browser. Please use a modern browser.')
+          return
+        }
+        
+        // Check if we have the required features
+        if (!features.getUserMedia) {
+          setError('Camera and microphone access is not supported in this browser.')
+          return
+        }
+
+        // Initialize devices and media
+        await initializeDevices()
+        setupSocketListeners()
+
+        // Add device change listener
+        navigator.mediaDevices.addEventListener('devicechange', async () => {
+          console.log('Devices changed, reinitializing...')
+          await initializeDevices()
+        })
+      } catch (error) {
+        console.error('Error during initialization:', error)
+        setError('Failed to initialize video call. Please check your camera and microphone permissions.')
       }
-      
-      await initializeDevices()
-      await initializeMedia()
-      setupSocketListeners()
     }
     
     checkSupport()
     
     return () => {
       cleanup()
+      // Remove device change listener
+      navigator.mediaDevices.removeEventListener('devicechange', initializeDevices)
     }
   }, [])
 
@@ -151,18 +170,57 @@ export const VideoCall = ({ setOpenVideoCall, openVideoCall, id }: VideoCallProp
 
   const initializeDevices = async () => {
     try {
-      const devices = await getAvailableDevices()
-      setAvailableDevices(devices)
+      // Request permissions first
+      const stream = await navigator.mediaDevices.getUserMedia({ 
+        video: true, 
+        audio: true 
+      }).catch(async () => {
+        // If both fail, try just audio
+        return await navigator.mediaDevices.getUserMedia({ 
+          video: false, 
+          audio: true 
+        });
+      }).catch(async () => {
+        // If audio fails, try just video
+        return await navigator.mediaDevices.getUserMedia({ 
+          video: true, 
+          audio: false 
+        });
+      });
+
+      // If we got a stream, use it
+      if (stream) {
+        setStream(stream);
+        if (localVideoRef.current) {
+          localVideoRef.current.srcObject = stream;
+          await localVideoRef.current.play().catch(error => {
+            console.error('Error playing local video:', error);
+          });
+        }
+      }
+
+      // Now get available devices
+      const devices = await getAvailableDevices();
+      console.log('Available devices after initialization:', devices);
+      setAvailableDevices(devices);
       
       // Set default devices
       if (devices.cameras.length > 0 && !selectedCamera) {
-        setSelectedCamera(devices.cameras[0].deviceId)
+        setSelectedCamera(devices.cameras[0].deviceId);
       }
       if (devices.microphones.length > 0 && !selectedMicrophone) {
-        setSelectedMicrophone(devices.microphones[0].deviceId)
+        setSelectedMicrophone(devices.microphones[0].deviceId);
+      }
+
+      // Auto-start call if we're the initiator
+      const searchParams = new URLSearchParams(window.location.search);
+      const isInitiator = !searchParams.get('type');
+      if (isInitiator && stream) {
+        callUser();
       }
     } catch (error) {
-      console.error('Failed to initialize devices:', error)
+      console.error('Failed to initialize devices:', error);
+      setError('Failed to access media devices. Please ensure camera/microphone permissions are granted.');
     }
   }
 
@@ -171,19 +229,34 @@ export const VideoCall = ({ setOpenVideoCall, openVideoCall, id }: VideoCallProp
       setError(null)
       setCallState(prev => ({ ...prev, reconnecting: retryCount > 0 }))
       
-      if (availableDevices.cameras.length === 0 && availableDevices.microphones.length === 0) {
-        setError('No camera or microphone found')
-        return
-      }
-
-      const mediaStream = await requestMediaPermissions(
-        availableDevices.cameras.length > 0,
-        availableDevices.microphones.length > 0
-      )
+      // First try to get both video and audio
+      const mediaStream = await navigator.mediaDevices.getUserMedia({
+        video: true,
+        audio: true
+      }).catch(async () => {
+        console.log('Failed to get both video and audio, trying audio only...')
+        // If both fail, try just audio
+        return await navigator.mediaDevices.getUserMedia({
+          video: false,
+          audio: true
+        })
+      }).catch(async () => {
+        console.log('Failed to get audio, trying video only...')
+        // If audio fails, try just video
+        return await navigator.mediaDevices.getUserMedia({
+          video: true,
+          audio: false
+        })
+      })
 
       if (!mediaStream) {
-        throw new Error('Failed to get media stream')
+        throw new Error('Failed to get any media stream')
       }
+
+      console.log('Got media stream:', {
+        video: mediaStream.getVideoTracks().length > 0,
+        audio: mediaStream.getAudioTracks().length > 0
+      })
 
       setStream(mediaStream)
       if (localVideoRef.current) {
@@ -193,27 +266,40 @@ export const VideoCall = ({ setOpenVideoCall, openVideoCall, id }: VideoCallProp
         })
       }
       
-      // Auto-start call if we're the initiator
-      const searchParams = new URLSearchParams(window.location.search)
-      const isInitiator = !searchParams.get('type')
-      if (isInitiator) {
-        callUser()
-      }
-      
       setCallState(prev => ({ ...prev, reconnecting: false }))
       setConnectionRetries(0)
+
+      // Update device selection based on active tracks
+      const videoTrack = mediaStream.getVideoTracks()[0]
+      const audioTrack = mediaStream.getAudioTracks()[0]
+      
+      if (videoTrack) {
+        setSelectedCamera(videoTrack.getSettings().deviceId || '')
+      }
+      if (audioTrack) {
+        setSelectedMicrophone(audioTrack.getSettings().deviceId || '')
+      }
+
     } catch (error: any) {
+      console.error('Media initialization error:', error)
       const errorMessage = getErrorMessage(error)
       
       if (error.name === 'NotAllowedError') {
         setDevicePermissionDenied(true)
+        setError('Please allow camera and microphone access to use video calling')
+      } else if (error.name === 'NotFoundError') {
+        setError('No camera or microphone found. Please connect a device and try again.')
+      } else if (error.name === 'NotReadableError') {
+        setError('Cannot access your camera or microphone. They might be in use by another application.')
+      } else {
+        setError(errorMessage)
       }
       
-      setError(errorMessage)
       setCallState(prev => ({ ...prev, reconnecting: false }))
       
-      // Auto-retry logic
-      if (retryCount < 3 && error.name !== 'NotAllowedError') {
+      // Auto-retry logic for certain errors
+      if (retryCount < 3 && !['NotAllowedError', 'NotFoundError'].includes(error.name)) {
+        console.log(`Retrying media initialization in ${2 * (retryCount + 1)} seconds...`)
         setTimeout(() => {
           initializeMedia(retryCount + 1)
         }, 2000 * (retryCount + 1))

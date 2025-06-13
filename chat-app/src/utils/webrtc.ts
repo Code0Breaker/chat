@@ -17,14 +17,33 @@ export interface CallQualityStats {
 
 export const getAvailableDevices = async (): Promise<MediaDevices> => {
   try {
+    // First request permissions to ensure device labels are accessible
+    await navigator.mediaDevices.getUserMedia({ video: true, audio: true })
+      .catch(() => {
+        // If full permissions fail, try just audio
+        return navigator.mediaDevices.getUserMedia({ video: false, audio: true });
+      })
+      .catch(() => {
+        // If audio fails, try just video
+        return navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+      })
+      .catch(error => {
+        console.warn('Initial device permission request failed:', error);
+      });
+
+    // Now enumerate devices
     const devices = await navigator.mediaDevices.enumerateDevices();
     
-    return {
+    const result = {
       cameras: devices.filter(device => device.kind === 'videoinput'),
       microphones: devices.filter(device => device.kind === 'audioinput'),
       speakers: devices.filter(device => device.kind === 'audiooutput')
     };
+
+    console.log('Available devices:', result);
+    return result;
   } catch (error) {
+    console.error('Error getting available devices:', error);
     return { cameras: [], microphones: [], speakers: [] };
   }
 };
