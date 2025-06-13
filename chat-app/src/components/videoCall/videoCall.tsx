@@ -103,6 +103,31 @@ export const VideoCall = ({ setOpenVideoCall, openVideoCall, id }: VideoCallProp
   useEffect(() => {
     const checkSupport = async () => {
       try {
+        // Check socket connection first
+        if (!socket.connected) {
+          console.log('Socket not connected, attempting to connect...')
+          socket.connect()
+        }
+
+        // Wait for socket connection
+        if (!socket.connected) {
+          await new Promise((resolve, reject) => {
+            const timeout = setTimeout(() => {
+              reject(new Error('Socket connection timeout'))
+            }, 5000)
+
+            socket.once('connect', () => {
+              clearTimeout(timeout)
+              resolve(true)
+            })
+
+            socket.once('connect_error', (error) => {
+              clearTimeout(timeout)
+              reject(error)
+            })
+          })
+        }
+
         const { isSupported, features } = checkWebRTCSupport()
         if (!isSupported) {
           setError('WebRTC is not supported in this browser. Please use a modern browser.')
@@ -122,6 +147,13 @@ export const VideoCall = ({ setOpenVideoCall, openVideoCall, id }: VideoCallProp
         socket.emit('join', { 
           roomId: id, 
           userId: localStorage.getItem('_id') 
+        }, (response: any) => {
+          if (response?.error) {
+            console.error('Error joining room:', response.error)
+            setError('Failed to join video call room. Please try again.')
+          } else {
+            console.log('Successfully joined room:', id)
+          }
         })
 
         // Initialize devices and media
@@ -132,9 +164,20 @@ export const VideoCall = ({ setOpenVideoCall, openVideoCall, id }: VideoCallProp
           console.log('Devices changed, reinitializing...')
           await initializeDevices()
         })
+
+        // Handle socket disconnection during call
+        socket.on('disconnect', (reason) => {
+          console.log('Socket disconnected during call:', reason)
+          if (reason === 'io server disconnect' || reason === 'io client disconnect') {
+            setError('Disconnected from server. Please refresh the page.')
+          } else {
+            setError('Connection lost. Attempting to reconnect...')
+          }
+        })
+
       } catch (error) {
         console.error('Error during initialization:', error)
-        setError('Failed to initialize video call. Please check your camera and microphone permissions.')
+        setError(error instanceof Error ? error.message : 'Failed to initialize video call. Please check your connection.')
       }
     }
     
@@ -145,10 +188,14 @@ export const VideoCall = ({ setOpenVideoCall, openVideoCall, id }: VideoCallProp
       // Remove device change listener
       navigator.mediaDevices.removeEventListener('devicechange', initializeDevices)
       // Leave the room
-      socket.emit('leave', { 
-        roomId: id, 
-        userId: localStorage.getItem('_id') 
-      })
+      if (socket.connected) {
+        socket.emit('leave', { 
+          roomId: id, 
+          userId: localStorage.getItem('_id') 
+        })
+      }
+      // Remove socket listeners
+      socket.off('disconnect')
     }
   }, [id])
 
@@ -322,8 +369,16 @@ export const VideoCall = ({ setOpenVideoCall, openVideoCall, id }: VideoCallProp
 
   const setupSocketListeners = () => {
     // Handle incoming calls
-    socket.on('receiveCall', (data) => {
+    // Use once to prevent duplicate events
+    socket.once('receiveCall', (data) => {
       console.log('Received call:', data)
+      
+      // Prevent duplicate call handling
+      if (incomingCall || callAccepted) {
+        console.log('Call already in progress, ignoring duplicate event')
+        return
+      }
+
       setIncomingCall(true)
       setCaller({ ...data.from, roomId: data.roomId })
       setCallerSignal(data.signalData)
@@ -333,15 +388,35 @@ export const VideoCall = ({ setOpenVideoCall, openVideoCall, id }: VideoCallProp
         roomId: data.roomId, 
         userId: localStorage.getItem('_id') 
       })
+
+      // Re-listen for next call after this one is handled
+      socket.on('receiveCall', (newData) => {
+        if (!incomingCall && !callAccepted) {
+          setIncomingCall(true)
+          setCaller({ ...newData.from, roomId: newData.roomId })
+          setCallerSignal(newData.signalData)
+        }
+      })
     })
 
     // Handle call accepted
-    socket.on('callAccepted', (signal) => {
-      console.log('Call accepted:', signal)
+    socket.on('callAccepted', (data) => {
+      console.log('Call accepted:', data)
       setCallAccepted(true)
       setCallState(prev => ({ ...prev, isConnecting: true }))
-      if (connectionRef.current) {
-        connectionRef.current.signal(signal.signal)
+      
+      if (!connectionRef.current) {
+        console.error('No peer connection available')
+        return
+      }
+
+      try {
+        // Signal the peer with the answer
+        console.log('Signaling peer with answer:', data.signal)
+        connectionRef.current.signal(data.signal)
+      } catch (error) {
+        console.error('Error handling call accepted:', error)
+        setError('Failed to establish connection after call was accepted')
       }
     })
 
@@ -376,9 +451,11 @@ export const VideoCall = ({ setOpenVideoCall, openVideoCall, id }: VideoCallProp
   }
 
   const createPeerConnection = useCallback((initiator: boolean, stream: MediaStream) => {
+    console.log('Creating peer connection:', { initiator, hasStream: !!stream })
+    
     const peer = new Peer({
       initiator,
-      trickle: true, // Enable trickle ICE for better connection establishment
+      trickle: true,
       stream,
       config: { 
         iceServers,
@@ -386,22 +463,61 @@ export const VideoCall = ({ setOpenVideoCall, openVideoCall, id }: VideoCallProp
         bundlePolicy: 'max-bundle',
         rtcpMuxPolicy: 'require',
         sdpSemantics: 'unified-plan'
+      },
+      offerOptions: {
+        offerToReceiveAudio: true,
+        offerToReceiveVideo: true
+      },
+      answerOptions: {
+        offerToReceiveAudio: true,
+        offerToReceiveVideo: true
       }
     }) as any
 
+    // Handle signaling
     peer.on('signal', (data: any) => {
-      console.log('Generated signal:', data)
+      console.log('Generated signal:', { type: data.type, hasCandidate: !!data.candidate })
+      
       if (initiator) {
-        socket.emit('callUser', {
-          roomId: id,
-          signalData: data,
-          from: { 
-            name: localStorage.getItem('fullname') || 'Unknown User', 
-            id: localStorage.getItem('_id') || '' 
-          }
-        })
+        // If we're the caller, send the offer or ICE candidate
+        if (data.type === 'offer') {
+          console.log('Sending offer to remote peer')
+          socket.emit('callUser', {
+            roomId: id,
+            signalData: data,
+            from: { 
+              name: localStorage.getItem('fullname') || 'Unknown User', 
+              id: localStorage.getItem('_id') || '' 
+            }
+          })
+        } else if (data.candidate) {
+          console.log('Sending ICE candidate to remote peer')
+          socket.emit('new-ice-candidate', {
+            candidate: data.candidate,
+            roomId: id,
+            from: localStorage.getItem('_id')
+          })
+        }
       } else {
-        socket.emit('answerCall', { signal: data, to: caller })
+        // If we're the answerer, send the answer or ICE candidate
+        if (data.type === 'answer') {
+          console.log('Sending answer to remote peer')
+          socket.emit('answerCall', { 
+            signal: data, 
+            to: caller,
+            from: {
+              id: localStorage.getItem('_id') || '',
+              name: localStorage.getItem('fullname') || 'Unknown User'
+            }
+          })
+        } else if (data.candidate) {
+          console.log('Sending ICE candidate to remote peer')
+          socket.emit('new-ice-candidate', {
+            candidate: data.candidate,
+            roomId: id,
+            from: localStorage.getItem('_id')
+          })
+        }
       }
     })
 
@@ -496,19 +612,66 @@ export const VideoCall = ({ setOpenVideoCall, openVideoCall, id }: VideoCallProp
     connectionRef.current = peer
   }
 
-  const answerCall = () => {
-    if (!stream) {
-      setError('Please allow camera and microphone access first')
-      return
-    }
+  const answerCall = async () => {
+    try {
+      if (!stream) {
+        // Try to get media stream if not already available
+        await initializeDevices()
+        if (!stream) {
+          setError('Please allow camera and microphone access first')
+          return
+        }
+      }
 
-    setCallAccepted(true)
-    setIncomingCall(false)
-    setCallState(prev => ({ ...prev, isConnecting: true }))
-    
-    const peer = createPeerConnection(false, stream)
-    peer.signal(callerSignal)
-    connectionRef.current = peer
+      if (!callerSignal) {
+        setError('Invalid call signal received')
+        return
+      }
+
+      console.log('Answering call with signal:', callerSignal)
+      
+      setCallAccepted(true)
+      setIncomingCall(false)
+      setCallState(prev => ({ ...prev, isConnecting: true }))
+      
+      const peer = createPeerConnection(false, stream)
+      connectionRef.current = peer
+
+      // Add specific handlers for this answer flow
+      peer.on('connect', () => {
+        console.log('Peer connection established (answer)')
+        setCallState(prev => ({ 
+          ...prev, 
+          isConnected: true, 
+          isConnecting: false 
+        }))
+      })
+
+      peer.on('error', (error: Error) => {
+        console.error('Peer connection error (answer):', error)
+        setError('Failed to establish connection. Please try again.')
+      })
+
+      // Signal the peer with the caller's signal data
+      console.log('Signaling peer with caller data')
+      peer.signal(callerSignal)
+
+      // Emit the answer event to the socket
+      socket.emit('answerCall', { 
+        signal: peer._pc.localDescription,
+        to: caller,
+        from: {
+          id: localStorage.getItem('_id'),
+          name: localStorage.getItem('fullname')
+        }
+      })
+    } catch (error) {
+      console.error('Error in answerCall:', error)
+      setError('Failed to answer call. Please try again.')
+      setCallAccepted(false)
+      setIncomingCall(false)
+      setCallState(prev => ({ ...prev, isConnecting: false }))
+    }
   }
 
   const endCall = () => {

@@ -34,8 +34,20 @@ interface ActiveCall {
 
 @WebSocketGateway({
   cors: {
-    origin: '*',
+    origin: ['https://chat.animehub.club', 'http://localhost:3004'],
+    methods: ['GET', 'POST'],
+    credentials: true,
+    allowedHeaders: ['Authorization', 'Bearer']
   },
+  transports: ['websocket', 'polling'],
+  path: '/socket.io/',
+  allowEIO3: true,
+  serveClient: false,
+  pingTimeout: 60000,
+  pingInterval: 25000,
+  upgradeTimeout: 10000,
+  allowUpgrades: true,
+  cookie: false
 })
 export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer()
@@ -184,7 +196,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   }
 
   @SubscribeMessage('callUser')
-  handleCallUser(
+  async handleCallUser(
     @MessageBody() callData: CallData,
     @ConnectedSocket() client: Socket,
   ) {
@@ -201,11 +213,25 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
       };
       this.activeCalls.set(callData.roomId, activeCall);
       
-      // Broadcast call to room (excluding sender)
-      client.broadcast.to(callData.roomId).emit('receiveCall', {
-        ...callData,
-        timestamp: new Date().toISOString()
-      });
+      // Get receiver's socket ID from the room
+      const roomMembers = await this.server.in(callData.roomId).allSockets();
+      const receiverSocket = Array.from(roomMembers).find(socketId => socketId !== client.id);
+
+      if (!receiverSocket) {
+        console.log('No receiver found in room, broadcasting to room');
+        // If no specific receiver found, broadcast to room (excluding sender)
+        client.broadcast.to(callData.roomId).emit('receiveCall', {
+          ...callData,
+          timestamp: new Date().toISOString()
+        });
+      } else {
+        console.log('Sending call directly to receiver:', receiverSocket);
+        // Send call directly to receiver
+        this.server.to(receiverSocket).emit('receiveCall', {
+          ...callData,
+          timestamp: new Date().toISOString()
+        });
+      }
       
       console.log(`Call initiated in room ${callData.roomId} by ${callData.from.name}`);
     } catch (error) {
@@ -226,33 +252,54 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
         id: string;
         roomId: string;
       };
+      from: {
+        id: string;
+        name: string;
+      };
     },
     @ConnectedSocket() client: Socket,
   ) {
     try {
       console.log('Answer Call:', JSON.stringify(callData, null, 2));
       
+      // Validate the data
+      if (!callData.signal || !callData.to || !callData.from) {
+        throw new Error('Invalid answer call data');
+      }
+      
       // Update active call
       const activeCall = this.activeCalls.get(callData.to.roomId);
       if (activeCall) {
-        if (!activeCall.participants.includes(callData.to.id)) {
-          activeCall.participants.push(callData.to.id);
+        if (!activeCall.participants.includes(callData.from.id)) {
+          activeCall.participants.push(callData.from.id);
         }
         activeCall.status = 'connected';
+        
+        // Log participants
+        console.log(`Call participants in room ${callData.to.roomId}:`, activeCall.participants);
+      } else {
+        console.warn(`No active call found for room ${callData.to.roomId}`);
       }
       
-      // Broadcast answer to room
-      client.broadcast.to(callData.to.roomId).emit('callAccepted', {
-        ...callData,
+      // Get caller's socket ID
+      const callerSocketId = this.userSocketMap.get(callData.to.id);
+      if (!callerSocketId) {
+        throw new Error('Caller not found');
+      }
+      
+      // Send answer directly to caller
+      this.server.to(callerSocketId).emit('callAccepted', {
+        signal: callData.signal,
+        from: callData.from,
         timestamp: new Date().toISOString()
       });
       
-      console.log(`Call answered in room ${callData.to.roomId}`);
+      console.log(`Call answered in room ${callData.to.roomId} by ${callData.from.name}`);
     } catch (error) {
       console.error('Error handling answer call:', error);
       client.emit('callError', {
         message: 'Failed to answer call',
-        error: error.message
+        error: error instanceof Error ? error.message : 'Unknown error'
       });
     }
   }
