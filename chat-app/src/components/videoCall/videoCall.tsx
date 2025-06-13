@@ -511,7 +511,7 @@ export const VideoCall = ({ setOpenVideoCall, openVideoCall, id }: VideoCallProp
         iceRestart: true,
         voiceActivityDetection: true
       },
-      sdpTransform: (sdp) => {
+      sdpTransform: (sdp: string) => {
         // Add logging
         console.log('Original SDP:', sdp);
         
