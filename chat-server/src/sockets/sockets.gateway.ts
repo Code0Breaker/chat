@@ -45,9 +45,30 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   activeCalls: Map<string, ActiveCall> = new Map();
   userSocketMap: Map<string, string> = new Map(); // userId -> socketId mapping
 
-  handleConnection(@MessageBody() message: any, client: Socket) {
-    console.log(`Client connected: ${client.id}`);
-    // Handle client connection
+  handleConnection(client: Socket) {
+    try {
+      if (!client || !client.id) {
+        console.error('Invalid client connection - client or client.id is undefined');
+        return;
+      }
+      
+      console.log(`Client connected: ${client.id}`);
+      
+      // Initialize client data
+      client.data = client.data || {};
+      
+      // Set up client event listeners for better error handling
+      client.on('error', (error) => {
+        console.error(`Socket error for client ${client.id}:`, error);
+      });
+      
+      client.on('disconnect', (reason) => {
+        console.log(`Client ${client.id} disconnected. Reason: ${reason}`);
+      });
+      
+    } catch (error) {
+      console.error('Error in handleConnection:', error);
+    }
   }
 
   handleDisconnect(client: Socket) {
