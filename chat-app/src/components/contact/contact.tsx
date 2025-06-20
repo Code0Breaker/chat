@@ -31,8 +31,7 @@ export default function Contact({ chat, id }: { chat: IChat, id: string }) {
   }
 
   const filterUnread = () => {
-    //@ts-ignore
-    const data = unreadMessages?.filter(item => item.chat._id === chat._id).sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+    const data = unreadMessages?.filter(item => item.chat._id === chat._id).sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
     return data
   }
 

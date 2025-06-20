@@ -3,7 +3,6 @@ import './App.css'
 import MessengerPage from './pages/messengerPage/messengerPage'
 import SignPage from './pages/signPage/signPage'
 import Messages from './components/messages/messages'
-import CallPage from './pages/callPage/callPage'
  
 function App() {
 
@@ -16,10 +15,6 @@ function App() {
         {
           path:':id',
           element:<MessagesWrapper/>
-        },
-        {
-          path:'call/:id',
-          element:<CallPage/>
         }
       ]
     },

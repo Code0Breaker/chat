@@ -78,21 +78,6 @@ export default function Messages({ id }: { id: string }) {
             </div>
            
             <div className="chat-area-footer">
-                <Link to={`/messenger/call/${id}?type=answer`} className='send-btn'>
-                <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="1.5"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    className="feather feather-video"
-                >
-                    <path d="M23 7l-7 5 7 5V7z" />
-                    <rect x={1} y={5} width={15} height={14} rx={2} ry={2} />
-                </svg>
-                </Link>
                 <svg
                     xmlns="http://www.w3.org/2000/svg"
                     viewBox="0 0 24 24"
