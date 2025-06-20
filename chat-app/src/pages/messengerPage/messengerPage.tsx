@@ -1,21 +1,22 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import Header from "../../components/header/header";
 import Contacts from "../../components/contacts/contacts";
-import { Outlet, useNavigate, useParams } from "react-router-dom";
-import { socket } from "../../socket";
-import { useStore } from "../../store/store";
-import { chancgeUnwatchStatus, getUnreadMessages } from "../../apis/chatApis";
+import { Outlet, useParams } from "react-router-dom";
+import { getSocket } from "../../config/socket";
+import { useChatStore } from "../../store/chatStore";
+import { getUnreadMessages } from "../../apis/chatApis";
 import newMessageNote from "../../assets/new-message.wav";
-
+import { SOCKET_EVENTS } from "../../config/constants";
+import { AuthStorage } from "../../utils/storage.utils";
+import { IMessage } from "../../types";
 
 export default function MessengerPage() {
     const { id } = useParams();
-    const [addToMessages] = useStore((state) => [state.addToMessages]);
-    const [unreadMessages, removeUnreadById, setUnreadMessages] = useStore(
-        (state) => [state.unreadMessages, state.removeUnreadById, state.setUnreadMessages]
-    );
-    
+    const { addToMessages, setUnreadMessages, removeUnreadById, unreadMessages } = useChatStore();
     const scrollRef = useRef<HTMLDivElement>(null);
+    
+    // Get socket instance
+    const socket = getSocket();
 
     useEffect(() => {
         if (scrollRef.current) {
@@ -24,24 +25,34 @@ export default function MessengerPage() {
     }, []);
 
     useEffect(() => {
-        // Handle regular chat messages
-        socket.on("chat", async (messages) => {
-            const data = await getUnreadMessages();
-            setUnreadMessages(data);
-            if (messages.sender_id !== localStorage._id) {
-                playNotificationSound();
+        // Handle incoming chat messages
+        const handleChatMessage = async (messageData: IMessage) => {
+            try {
+                // Update unread messages
+                const unreadData = await getUnreadMessages();
+                setUnreadMessages(unreadData);
+                
+                // Play notification sound for messages from others
+                if (messageData.sender_id !== AuthStorage.getUserId()) {
+                    playNotificationSound();
+                }
+                
+                // Add message to current chat if it matches
+                if (messageData.chat?._id === id) {
+                    addToMessages(messageData);
+                }
+            } catch (error) {
+                console.error('Error handling chat message:', error);
             }
-            if (messages.chat._id === id) {
-                addToMessages(messages);
-            }
-        });
+        };
 
-
+        // Listen for chat messages
+        socket.on(SOCKET_EVENTS.CHAT, handleChatMessage);
 
         return () => {
-            socket.off("chat");
+            socket.off(SOCKET_EVENTS.CHAT, handleChatMessage);
         };
-    }, [id, addToMessages, setUnreadMessages]);
+    }, [id, addToMessages, setUnreadMessages, socket]);
 
     useEffect(() => {
         (async () => {
@@ -56,8 +67,10 @@ export default function MessengerPage() {
     }
 
     const setWatched = () => {
-        const ids = unreadMessages?.filter((item) => item.chat._id === id).map((item) => item._id);
-        removeUnreadById(ids as string[]);
+        const ids = unreadMessages?.filter((item) => item.chat?._id === id).map((item) => item._id);
+        if (ids && ids.length > 0) {
+            removeUnreadById(ids as string[]);
+        }
     };
 
 
