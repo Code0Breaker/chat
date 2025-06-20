@@ -41,10 +41,12 @@ export default function Messages({ id }: { id: string }) {
 
     // Handle typing indicators
     useEffect(() => {
-        const handleTyping = (data: { typerId: string; roomId: string }) => {
-            setTyperId(data.typerId)
-            setRoomId(data.roomId)
-            setIsTyping(true)
+        const handleTyping = (userData: { roomId: string; userId: string; fullname: string }) => {
+            if (userData.roomId === id && userData.userId !== AuthStorage.getUserId()) {
+                setTyperId(userData.userId)
+                setRoomId(userData.roomId)
+                setIsTyping(true)
+            }
         }
 
         socket.on(SOCKET_EVENTS.IS_TYPING, handleTyping)
@@ -52,23 +54,29 @@ export default function Messages({ id }: { id: string }) {
         return () => {
             socket.off(SOCKET_EVENTS.IS_TYPING, handleTyping)
         }
-    }, [socket])
+    }, [socket, id])
 
     // Clear typing indicator after timeout
     useEffect(() => {
-        const timeout = setTimeout(() => {
-            setIsTyping(false)
-        }, 2000)
-        return () => clearTimeout(timeout)
+        if (isTyping) {
+            const timeout = setTimeout(() => {
+                setIsTyping(false)
+                setTyperId(null)
+            }, 2000)
+            return () => clearTimeout(timeout)
+        }
     }, [isTyping])
 
     // Emit typing when user is typing
     useEffect(() => {
         if (text.trim() && id) {
-            socket.emit(SOCKET_EVENTS.IS_TYPING, { 
-                roomId: id, 
-                typerId: AuthStorage.getUserId() 
-            })
+            const userId = AuthStorage.getUserId()
+            const userData = {
+                roomId: id,
+                userId: userId,
+                fullname: AuthStorage.getFullname() || 'User'
+            }
+            socket.emit(SOCKET_EVENTS.IS_TYPING, userData)
         }
     }, [text, id, socket])
 

@@ -24,10 +24,36 @@ export default function MessengerPage() {
         }
     }, []);
 
+    // Join/leave chat room when chat ID changes
+    useEffect(() => {
+        const userId = AuthStorage.getUserId();
+        
+        if (id && userId) {
+            // Join the chat room
+            socket.emit(SOCKET_EVENTS.JOIN, {
+                roomId: id,
+                userId: userId
+            });
+            
+            console.log(`Joined chat room: ${id}`);
+            
+            // Cleanup: leave room when component unmounts or chat changes
+            return () => {
+                socket.emit(SOCKET_EVENTS.LEAVE, {
+                    roomId: id,
+                    userId: userId
+                });
+                console.log(`Left chat room: ${id}`);
+            };
+        }
+    }, [id, socket]);
+
     useEffect(() => {
         // Handle incoming chat messages
         const handleChatMessage = async (messageData: IMessage) => {
             try {
+                console.log('Received chat message:', messageData);
+                
                 // Update unread messages
                 const unreadData = await getUnreadMessages();
                 setUnreadMessages(unreadData);
@@ -46,11 +72,36 @@ export default function MessengerPage() {
             }
         };
 
+        // Handle new contact messages (same as chat messages)
+        const handleNewContactMessage = async (messageData: IMessage) => {
+            try {
+                console.log('Received new contact message:', messageData);
+                
+                // Update unread messages
+                const unreadData = await getUnreadMessages();
+                setUnreadMessages(unreadData);
+                
+                // Play notification sound for messages from others
+                if (messageData.sender_id !== AuthStorage.getUserId()) {
+                    playNotificationSound();
+                }
+                
+                // Add message to current chat if it matches
+                if (messageData.chat?._id === id) {
+                    addToMessages(messageData);
+                }
+            } catch (error) {
+                console.error('Error handling new contact message:', error);
+            }
+        };
+
         // Listen for chat messages
         socket.on(SOCKET_EVENTS.CHAT, handleChatMessage);
+        socket.on(SOCKET_EVENTS.NEW_CONTACT_MESSAGE, handleNewContactMessage);
 
         return () => {
             socket.off(SOCKET_EVENTS.CHAT, handleChatMessage);
+            socket.off(SOCKET_EVENTS.NEW_CONTACT_MESSAGE, handleNewContactMessage);
         };
     }, [id, addToMessages, setUnreadMessages, socket]);
 
@@ -72,8 +123,6 @@ export default function MessengerPage() {
             removeUnreadById(ids as string[]);
         }
     };
-
-
 
     return (
         <div className="app">

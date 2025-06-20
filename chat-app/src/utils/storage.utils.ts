@@ -114,11 +114,20 @@ export class AuthStorage {
     return StorageUtils.setItem(STORAGE_KEYS.USER_PIC, pic);
   }
 
+  static getFullname(): string {
+    return StorageUtils.getItem('fullname');
+  }
+
+  static setFullname(fullname: string): boolean {
+    return StorageUtils.setItem('fullname', fullname);
+  }
+
   static clearAuthData(): boolean {
     try {
       StorageUtils.removeItem(STORAGE_KEYS.TOKEN);
       StorageUtils.removeItem(STORAGE_KEYS.USER_ID);
       StorageUtils.removeItem(STORAGE_KEYS.USER_PIC);
+      StorageUtils.removeItem('fullname');
       return true;
     } catch (error) {
       console.warn('Failed to clear auth data', error);
