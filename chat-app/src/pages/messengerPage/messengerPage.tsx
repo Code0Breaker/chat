@@ -16,11 +16,15 @@ export default function MessengerPage() {
     const [unreadMessages, removeUnreadById, setUnreadMessages] = useStore(
         (state) => [state.unreadMessages, state.removeUnreadById, state.setUnreadMessages]
     );
+    
+    // Global incoming call state
     const incomingCall = useStore(state => state.incomingCall);
     const caller = useStore(state => state.caller);
+    const setIncomingCall = useStore(state => state.setIncomingCall);
+    const setCaller = useStore(state => state.setCaller);
+    
     const [offerSignal, setOfferSignal] = useState<SignalData | null>(null);
     const [candidateSignal, setCandidateSignal] = useState<SignalData[]>([]);
-    const [open, setOpen] = useState(false);
     const scrollRef = useRef<HTMLDivElement>(null);
 
     // Передаем данные через Outlet для использования на странице звонка
@@ -38,6 +42,7 @@ export default function MessengerPage() {
     }, []);
 
     useEffect(() => {
+        // Handle regular chat messages
         socket.on("chat", async (messages) => {
             const data = await getUnreadMessages();
             setUnreadMessages(data);
@@ -49,6 +54,49 @@ export default function MessengerPage() {
             }
         });
 
+        // Handle incoming video calls - using the same event as VideoCall component
+        socket.on("receiveCall", (data) => {
+            console.log("Global incoming call received:", data);
+
+            // Prevent duplicate call handling
+            if (incomingCall) {
+                console.log("Call already in progress, ignoring duplicate event");
+                return;
+            }
+
+            // Store the offer signal
+            if (data.signalData?.type === "offer") {
+                console.log("Received offer signal, showing global incoming call");
+                setIncomingCall(true);
+                setCaller({ 
+                    name: data.from.name, 
+                    id: data.from.id, 
+                    roomId: data.roomId 
+                });
+
+                // Join the room
+                socket.emit("join", {
+                    roomId: data.roomId,
+                    userId: localStorage.getItem("_id"),
+                });
+            }
+        });
+
+        // Handle call ended
+        socket.on("callEnded", () => {
+            console.log("Call ended globally");
+            setIncomingCall(false);
+            setCaller(null);
+        });
+
+        // Handle call rejected
+        socket.on("callRejected", (data) => {
+            console.log("Call rejected globally:", data);
+            setIncomingCall(false);
+            setCaller(null);
+        });
+
+        // Legacy socket listener for backward compatibility
         socket.on("reciveCall", (data: IPeerSignalMessage) => {
             if (!data) {
                 return;
@@ -58,7 +106,6 @@ export default function MessengerPage() {
                 if (data.from && data.from.id !== localStorage._id) {
                     if (data.peerData.type === "offer") {
                         setOfferSignal(data.peerData);
-                        setOpen(true);
                     } else {
                         setCandidateSignal(prev => [...prev, data.peerData]);
                     }
@@ -68,10 +115,12 @@ export default function MessengerPage() {
 
         return () => {
             socket.off("chat");
-            socket.off("isTyping");
+            socket.off("receiveCall");
+            socket.off("callEnded");
+            socket.off("callRejected");
             socket.off("reciveCall");
         };
-    }, [id, addToMessages, setUnreadMessages]);
+    }, [id, addToMessages, setUnreadMessages, incomingCall, setIncomingCall, setCaller]);
 
     useEffect(() => {
         (async () => {
@@ -90,10 +139,27 @@ export default function MessengerPage() {
         removeUnreadById(ids as string[]);
     };
 
+    const handleRejectCall = () => {
+        console.log("Rejecting call globally...");
+        setIncomingCall(false);
+        setCaller(null);
+        
+        // Emit reject call event
+        if (caller) {
+            socket.emit("rejectCall", { roomId: caller.roomId });
+        }
+    };
+
     return (
         <div className="app">
             <Header />
-            {incomingCall && caller && open && <Caller caller={caller} setOpen={setOpen} />}
+            {/* Global incoming call modal - shows everywhere in authenticated routes */}
+            {incomingCall && caller && (
+                <Caller 
+                    caller={caller} 
+                    onReject={handleRejectCall}
+                />
+            )}
             <div className="wrapper">
                 <Contacts id={id as string} />
                 <div className="chat-area" ref={scrollRef} onMouseEnter={setWatched}>

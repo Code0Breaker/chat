@@ -1,8 +1,28 @@
 .caller {
     position: fixed;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    animation: fadeIn 0.3s ease;
+}
+
+.backdrop {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(5px);
+}
+
+.callerModal {
+    position: relative;
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     padding: 40px;
     border-radius: 20px;
@@ -11,8 +31,8 @@
     color: white;
     max-width: 400px;
     width: 90%;
-    z-index: 1001;
-    animation: fadeIn 0.3s ease;
+    z-index: 10000;
+    animation: slideIn 0.3s ease;
 }
 
 .callerInfo {
@@ -30,6 +50,12 @@
     font-size: 2rem;
     margin: 0;
     font-weight: 700;
+}
+
+.callerInfo p {
+    font-size: 0.9rem;
+    opacity: 0.8;
+    margin: 0.5rem 0 0 0;
 }
 
 .callActions {
@@ -72,10 +98,19 @@
 @keyframes fadeIn {
     from {
         opacity: 0;
-        transform: translate(-50%, -60%);
     }
     to {
         opacity: 1;
-        transform: translate(-50%, -50%);
+    }
+}
+
+@keyframes slideIn {
+    from {
+        transform: scale(0.8) translateY(-20px);
+        opacity: 0;
+    }
+    to {
+        transform: scale(1) translateY(0);
+        opacity: 1;
     }
 }
