@@ -28,7 +28,7 @@ export const useChatStore = create<ChatStore>()(
           set((state) => {
             if (state.messages) {
               // Avoid duplicates
-              const exists = state.messages.some((m) => m._id === message._id);
+              const exists = state.messages.some((m: IMessage) => m._id === message._id);
               if (!exists) {
                 state.messages.push(message);
               }
@@ -46,7 +46,7 @@ export const useChatStore = create<ChatStore>()(
           set((state) => {
             if (state.unreadMessages) {
               // Avoid duplicates
-              const exists = state.unreadMessages.some((m) => m._id === message._id);
+              const exists = state.unreadMessages.some((m: IMessage) => m._id === message._id);
               if (!exists) {
                 state.unreadMessages.push(message);
               }
@@ -59,7 +59,7 @@ export const useChatStore = create<ChatStore>()(
           set((state) => {
             if (state.unreadMessages) {
               state.unreadMessages = state.unreadMessages.filter(
-                (item) => !ids.includes(item._id)
+                (item: IMessage) => !ids.includes(item._id)
               );
             }
           }),
