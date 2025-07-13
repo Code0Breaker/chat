@@ -3,7 +3,7 @@ import { url } from "./apis/baseUrl";
 
 const token = localStorage.getItem("token");
 
-export const socket = connect(url, {
+export const socket = connect(url.baseURL, {
     auth: {
         token: `Bearer ${token}`,
     },
