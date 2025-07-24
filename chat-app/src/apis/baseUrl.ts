@@ -37,4 +37,3 @@ base_url.interceptors.response.use(
         return Promise.reject(error);
     }
 );
-
