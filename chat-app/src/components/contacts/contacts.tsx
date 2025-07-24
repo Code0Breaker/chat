@@ -10,7 +10,7 @@ export default function Contacts({ id }: { id: string }) {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   
-  // Get socket instance once and memoize it
+  // Get socket instance once and memoize it, but don't block API calls if it fails
   const socket = useMemo(() => {
     try {
       return getSocket();
@@ -22,26 +22,30 @@ export default function Contacts({ id }: { id: string }) {
 
   useEffect(() => {
     const loadContacts = async () => {
-      if (!socket) {
-        setError('Socket not available');
-        return;
-      }
-
       try {
         setIsLoading(true)
         setError(null)
         
+        // Make API call regardless of socket status
+        console.log('🔄 Loading contacts...');
         const data = await getContacts()
-        
-        // Join all chat rooms
-        const roomIds = data.map(item => item._id).filter(Boolean);
-        if (roomIds.length > 0) {
-          socket.emit(SOCKET_EVENTS.JOIN, roomIds);
-        }
+        console.log('✅ Contacts loaded:', data);
         
         setContacts(data)
+        
+        // Only join rooms if socket is available
+        if (socket) {
+          const roomIds = data.map(item => item._id).filter(Boolean);
+          if (roomIds.length > 0) {
+            console.log('🔌 Joining rooms:', roomIds);
+            socket.emit(SOCKET_EVENTS.JOIN, roomIds);
+          }
+        } else {
+          console.warn('⚠️ Socket not available, skipping room join');
+        }
+        
       } catch (err) {
-        console.error('Failed to load contacts:', err)
+        console.error('❌ Failed to load contacts:', err)
         setError('Failed to load contacts')
       } finally {
         setIsLoading(false)
@@ -49,7 +53,7 @@ export default function Contacts({ id }: { id: string }) {
     }
 
     loadContacts()
-  }, [socket]) // Remove 'id' dependency to prevent unnecessary reloads
+  }, [socket]) // Keep socket dependency for room joining
 
   if (isLoading) {
     return (
@@ -71,9 +75,19 @@ export default function Contacts({ id }: { id: string }) {
     )
   }
 
+  if (!contacts || contacts.length === 0) {
+    return (
+      <div className="conversation-area">
+        <div className="no-contacts">
+          <p>No contacts found</p>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="conversation-area">
-      {contacts?.map(item => <Contact chat={item} id={id} key={item._id} />)}
+      {contacts.map(item => <Contact chat={item} id={id} key={item._id} />)}
       <button className="add" />
       <div className="overlay" />
     </div>
