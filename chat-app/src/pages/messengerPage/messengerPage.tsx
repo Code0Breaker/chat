@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useMemo } from "react";
 import Header from "../../components/header/header";
 import Contacts from "../../components/contacts/contacts";
 import { Outlet, useParams } from "react-router-dom";
@@ -9,14 +9,22 @@ import newMessageNote from "../../assets/new-message.wav";
 import { SOCKET_EVENTS } from "../../config/constants";
 import { AuthStorage } from "../../utils/storage.utils";
 import { IMessage } from "../../types";
+import { useSocketEvent } from "../../hooks/useSocket";
 
 export default function MessengerPage() {
     const { id } = useParams();
     const { addToMessages, setUnreadMessages, removeUnreadById, unreadMessages } = useChatStore();
     const scrollRef = useRef<HTMLDivElement>(null);
     
-    // Get socket instance
-    const socket = getSocket();
+    // Get socket instance once and memoize it
+    const socket = useMemo(() => {
+        try {
+            return getSocket();
+        } catch (error) {
+            console.error('Failed to get socket:', error);
+            return null;
+        }
+    }, []);
 
     useEffect(() => {
         if (scrollRef.current) {
@@ -26,9 +34,11 @@ export default function MessengerPage() {
 
     // Join/leave chat room when chat ID changes
     useEffect(() => {
+        if (!socket || !id) return;
+        
         const userId = AuthStorage.getUserId();
         
-        if (id && userId) {
+        if (userId) {
             // Join the chat room
             socket.emit(SOCKET_EVENTS.JOIN, {
                 roomId: id,
@@ -48,73 +58,70 @@ export default function MessengerPage() {
         }
     }, [id, socket]);
 
-    useEffect(() => {
-        // Handle incoming chat messages
-        const handleChatMessage = async (messageData: IMessage) => {
-            try {
-                console.log('Received chat message:', messageData);
-                
-                // Update unread messages
-                const unreadData = await getUnreadMessages();
-                setUnreadMessages(unreadData);
-                
-                // Play notification sound for messages from others
-                if (messageData.sender_id !== AuthStorage.getUserId()) {
-                    playNotificationSound();
-                }
-                
-                // Add message to current chat if it matches
-                if (messageData.chat?._id === id) {
-                    addToMessages(messageData);
-                }
-            } catch (error) {
-                console.error('Error handling chat message:', error);
+    // Handle incoming chat messages using the new useSocketEvent hook
+    useSocketEvent<IMessage>(SOCKET_EVENTS.CHAT, async (messageData) => {
+        try {
+            console.log('Received chat message:', messageData);
+            
+            // Update unread messages
+            const unreadData = await getUnreadMessages();
+            setUnreadMessages(unreadData);
+            
+            // Play notification sound for messages from others
+            if (messageData.sender_id !== AuthStorage.getUserId()) {
+                playNotificationSound();
             }
-        };
-
-        // Handle new contact messages (same as chat messages)
-        const handleNewContactMessage = async (messageData: IMessage) => {
-            try {
-                console.log('Received new contact message:', messageData);
-                
-                // Update unread messages
-                const unreadData = await getUnreadMessages();
-                setUnreadMessages(unreadData);
-                
-                // Play notification sound for messages from others
-                if (messageData.sender_id !== AuthStorage.getUserId()) {
-                    playNotificationSound();
-                }
-                
-                // Add message to current chat if it matches
-                if (messageData.chat?._id === id) {
-                    addToMessages(messageData);
-                }
-            } catch (error) {
-                console.error('Error handling new contact message:', error);
+            
+            // Add message to current chat if it matches
+            if (messageData.chat?._id === id) {
+                addToMessages(messageData);
             }
-        };
+        } catch (error) {
+            console.error('Error handling chat message:', error);
+        }
+    }, [id, addToMessages, setUnreadMessages]);
 
-        // Listen for chat messages
-        socket.on(SOCKET_EVENTS.CHAT, handleChatMessage);
-        socket.on(SOCKET_EVENTS.NEW_CONTACT_MESSAGE, handleNewContactMessage);
-
-        return () => {
-            socket.off(SOCKET_EVENTS.CHAT, handleChatMessage);
-            socket.off(SOCKET_EVENTS.NEW_CONTACT_MESSAGE, handleNewContactMessage);
-        };
-    }, [id, addToMessages, setUnreadMessages, socket]);
+    // Handle new contact messages using the new useSocketEvent hook
+    useSocketEvent<IMessage>(SOCKET_EVENTS.NEW_CONTACT_MESSAGE, async (messageData) => {
+        try {
+            console.log('Received new contact message:', messageData);
+            
+            // Update unread messages
+            const unreadData = await getUnreadMessages();
+            setUnreadMessages(unreadData);
+            
+            // Play notification sound for messages from others
+            if (messageData.sender_id !== AuthStorage.getUserId()) {
+                playNotificationSound();
+            }
+            
+            // Add message to current chat if it matches
+            if (messageData.chat?._id === id) {
+                addToMessages(messageData);
+            }
+        } catch (error) {
+            console.error('Error handling new contact message:', error);
+        }
+    }, [id, addToMessages, setUnreadMessages]);
 
     useEffect(() => {
         (async () => {
-            const data = await getUnreadMessages();
-            setUnreadMessages(data);
+            try {
+                const data = await getUnreadMessages();
+                setUnreadMessages(data);
+            } catch (error) {
+                console.error('Failed to load unread messages:', error);
+            }
         })();
     }, [setUnreadMessages]);
 
     function playNotificationSound() {
-        const audio = new Audio(newMessageNote);
-        audio.play();
+        try {
+            const audio = new Audio(newMessageNote);
+            audio.play().catch(err => console.log('Could not play notification sound:', err));
+        } catch (error) {
+            console.error('Error playing notification sound:', error);
+        }
     }
 
     const setWatched = () => {

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import Contact from '../contact/contact'
 import { getContacts } from '../../apis/chatApis'
 import { IChat } from '../../types'
@@ -9,10 +9,24 @@ export default function Contacts({ id }: { id: string }) {
   const [contacts, setContacts] = useState<null | IChat[]>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const socket = getSocket()
+  
+  // Get socket instance once and memoize it
+  const socket = useMemo(() => {
+    try {
+      return getSocket();
+    } catch (error) {
+      console.error('Failed to get socket:', error);
+      return null;
+    }
+  }, []);
 
   useEffect(() => {
     const loadContacts = async () => {
+      if (!socket) {
+        setError('Socket not available');
+        return;
+      }
+
       try {
         setIsLoading(true)
         setError(null)
@@ -20,7 +34,10 @@ export default function Contacts({ id }: { id: string }) {
         const data = await getContacts()
         
         // Join all chat rooms
-        socket.emit(SOCKET_EVENTS.JOIN, data.map(item => item._id))
+        const roomIds = data.map(item => item._id).filter(Boolean);
+        if (roomIds.length > 0) {
+          socket.emit(SOCKET_EVENTS.JOIN, roomIds);
+        }
         
         setContacts(data)
       } catch (err) {
@@ -32,7 +49,7 @@ export default function Contacts({ id }: { id: string }) {
     }
 
     loadContacts()
-  }, [id, socket])
+  }, [socket]) // Remove 'id' dependency to prevent unnecessary reloads
 
   if (isLoading) {
     return (

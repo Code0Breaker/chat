@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useMemo } from 'react'
 import { selectChat, sendMessage } from '../../apis/chatApis'
 import { IMessage } from '../../types'
 import { SendIcon } from '../../assets/icons/sendIcon'
@@ -7,6 +7,7 @@ import { useChatStore } from '../../store/chatStore'
 import { timeAgo } from '../../utils/time.utils'
 import { SOCKET_EVENTS } from '../../config/constants'
 import { AuthStorage } from '../../utils/storage.utils'
+import { useSocketEvent } from '../../hooks/useSocket'
 
 export default function Messages({ id }: { id: string }) {
     const { messages, setMessages, addToMessages, isLoading, error, setLoading, setError, clearError } = useChatStore()
@@ -15,8 +16,15 @@ export default function Messages({ id }: { id: string }) {
     const [typerId, setTyperId] = useState<string | null>(null)
     const [roomId, setRoomId] = useState<string | null>(null)
     
-    // Get socket instance
-    const socket = getSocket()
+    // Get socket instance once and memoize it
+    const socket = useMemo(() => {
+        try {
+            return getSocket();
+        } catch (error) {
+            console.error('Failed to get socket:', error);
+            return null;
+        }
+    }, []);
 
     // Load messages when chat ID changes
     useEffect(() => {
@@ -39,22 +47,18 @@ export default function Messages({ id }: { id: string }) {
         loadMessages()
     }, [id, setMessages, setLoading, setError, clearError])
 
-    // Handle typing indicators
-    useEffect(() => {
-        const handleTyping = (userData: { roomId: string; userId: string; fullname: string }) => {
+    // Handle typing indicators using useSocketEvent
+    useSocketEvent<{ roomId: string; userId: string; fullname: string }>(
+        SOCKET_EVENTS.IS_TYPING, 
+        (userData) => {
             if (userData.roomId === id && userData.userId !== AuthStorage.getUserId()) {
                 setTyperId(userData.userId)
                 setRoomId(userData.roomId)
                 setIsTyping(true)
             }
-        }
-
-        socket.on(SOCKET_EVENTS.IS_TYPING, handleTyping)
-
-        return () => {
-            socket.off(SOCKET_EVENTS.IS_TYPING, handleTyping)
-        }
-    }, [socket, id])
+        }, 
+        [id]
+    );
 
     // Clear typing indicator after timeout
     useEffect(() => {
@@ -69,20 +73,20 @@ export default function Messages({ id }: { id: string }) {
 
     // Emit typing when user is typing
     useEffect(() => {
-        if (text.trim() && id) {
-            const userId = AuthStorage.getUserId()
-            const userData = {
-                roomId: id,
-                userId: userId,
-                fullname: AuthStorage.getFullname() || 'User'
-            }
-            socket.emit(SOCKET_EVENTS.IS_TYPING, userData)
+        if (!socket || !text.trim() || !id) return;
+
+        const userId = AuthStorage.getUserId()
+        const userData = {
+            roomId: id,
+            userId: userId,
+            fullname: AuthStorage.getFullname() || 'User'
         }
+        socket.emit(SOCKET_EVENTS.IS_TYPING, userData)
     }, [text, id, socket])
 
     // Send message function
     const send = useCallback(async () => {
-        if (!text.trim() || !id || isLoading) return
+        if (!text.trim() || !id || isLoading || !socket) return
 
         try {
             setLoading(true)
@@ -125,129 +129,66 @@ export default function Messages({ id }: { id: string }) {
         )
     }
 
-    return (
-        <>
+    if (error && !messages?.length) {
+        return (
             <div className="chat-area-main">
-                {error && (
-                    <div className="error-container">
-                        <p className="error-message">{error}</p>
-                        <button onClick={clearError} className="error-dismiss">×</button>
-                    </div>
-                )}
-                
-                {messages?.map(item => {
-                    return (
-                        <div className={`chat-msg ${item.sender_id === AuthStorage.getUserId() ? "owner":"sender"}`} key={item._id}>
-                            <div className="chat-msg-profile">
-                                <img
-                                    className="chat-msg-img"
-                                    src={item.user.pic}
-                                    alt={item.user.fullname}
-                                />
-                                {!timeAgo(item?.created_at).includes('NaN') && (
-                                    <div className="chat-msg-date">{timeAgo(item?.created_at)}</div>
-                                )}
-                            </div>
-                            <div className="chat-msg-content">
-                                <div className="chat-msg-text">
-                                    {item.content}
-                                </div>
-                            </div>
-                        </div>
-                    )
-                })}
-                
-                {isTyping && typerId !== AuthStorage.getUserId() && id === roomId && (
+                <div className="error-container">
+                    <p className="error-message">{error}</p>
+                </div>
+            </div>
+        )
+    }
+
+    return (
+        <div className="chat-area-main">
+            <div className="chat-area-header">
+                <div className="chat-area-title">Chat Messages</div>
+                {isTyping && (
                     <div className="typing-indicator">
-                        <p>Typing...</p>
+                        <small>Someone is typing...</small>
                     </div>
                 )}
             </div>
-           
+            
+            <div className="chat-area-group">
+                {messages?.map((message, index) => (
+                    <div 
+                        key={message._id} 
+                        className={`chat-area-message ${message.sender_id === AuthStorage.getUserId() ? 'right' : 'left'}`}
+                    >
+                        <div className="message-content">
+                            <div className="message-text">{message.content}</div>
+                            <div className="message-time">
+                                {timeAgo(message.created_at)}
+                            </div>
+                        </div>
+                    </div>
+                ))}
+            </div>
+
             <div className="chat-area-footer">
-                <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="1.5"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    className="feather feather-image"
-                >
-                    <rect x={3} y={3} width={18} height={18} rx={2} ry={2} />
-                    <circle cx="8.5" cy="8.5" r="1.5" />
-                    <path d="M21 15l-5-5L5 21" />
-                </svg>
-                <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="1.5"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    className="feather feather-plus-circle"
-                >
-                    <circle cx={12} cy={12} r={10} />
-                    <path d="M12 8v8M8 12h8" />
-                </svg>
-                <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="1.5"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    className="feather feather-paperclip"
-                >
-                    <path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48" />
-                </svg>
-                
-                <input 
-                    type="text" 
-                    placeholder="Type something here..." 
-                    value={text} 
-                    onChange={e => setText(e.target.value)}
+                <input
+                    type="text"
+                    placeholder="Type a message..."
+                    value={text}
+                    onChange={(e) => setText(e.target.value)}
                     onKeyPress={handleKeyPress}
                     disabled={isLoading}
                 />
-                
                 <button 
                     onClick={send} 
-                    className='send-btn'
                     disabled={isLoading || !text.trim()}
+                    className="send-button"
                 >
-                    {isLoading ? '...' : <SendIcon />}
+                    <SendIcon />
                 </button>
-
-                <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="1.5"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    className="feather feather-smile"
-                >
-                    <circle cx={12} cy={12} r={10} />
-                    <path d="M8 14s1.5 2 4 2 4-2 4-2M9 9h.01M15 9h.01" />
-                </svg>
-                <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="1.5"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    className="feather feather-thumbs-up"
-                >
-                    <path d="M14 9V5a3 3 0 00-3-3l-4 9v11h11.28a2 2 0 002-1.7l1.38-9a2 2 0 00-2-2.3zM7 22H4a2 2 0 01-2-2v-7a2 2 0 012-2h3" />
-                </svg>
             </div>
-        </>
+
+            {error && (
+                <div className="error-message">
+                    {error}
+                </div>
+            )}
+        </div>
     )
 }

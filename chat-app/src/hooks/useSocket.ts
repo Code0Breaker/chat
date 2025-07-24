@@ -1,13 +1,14 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
-import { io, Socket } from 'socket.io-client';
+import { Socket } from 'socket.io-client';
 import { UseSocketReturn } from '../types';
-import { SOCKET_EVENTS, UI_CONSTANTS } from '../config/constants';
-import { AuthStorage } from '../utils/storage.utils';
+import { getSocket, disconnectSocket, isSocketConnected } from '../config/socket';
+import { SOCKET_EVENTS } from '../config/constants';
 
 /**
  * Custom hook for managing socket connection with enhanced error handling
+ * Uses the singleton socket from config/socket.ts
  */
-export const useSocket = (serverUrl: string): UseSocketReturn => {
+export const useSocket = (): UseSocketReturn => {
   const [isConnected, setIsConnected] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const socketRef = useRef<Socket | null>(null);
@@ -17,94 +18,65 @@ export const useSocket = (serverUrl: string): UseSocketReturn => {
       return;
     }
 
-    const token = AuthStorage.getToken();
-    if (!token) {
-      setError('Authentication token not found');
-      return;
-    }
-
     try {
-      const socket = io(serverUrl, {
-        auth: {
-          token: `Bearer ${token}`,
-        },
-        transports: ['polling', 'websocket'],
-        reconnection: true,
-        reconnectionAttempts: UI_CONSTANTS.RECONNECTION_ATTEMPTS,
-        reconnectionDelay: UI_CONSTANTS.RECONNECTION_DELAY,
-        reconnectionDelayMax: UI_CONSTANTS.RECONNECTION_DELAY_MAX,
-        timeout: UI_CONSTANTS.SOCKET_TIMEOUT,
-        autoConnect: true,
-        forceNew: false,
-        path: '/socket.io/',
-        withCredentials: true,
-        extraHeaders: {
-          Authorization: `Bearer ${token}`,
-        },
-        upgrade: true,
-        rememberUpgrade: true,
-        secure: true,
-        rejectUnauthorized: false,
-        transportOptions: {
-          polling: {
-            extraHeaders: {
-              Authorization: `Bearer ${token}`,
-            },
-          },
-        },
-      });
+      const socket = getSocket();
+      socketRef.current = socket;
 
-      // Connection event handlers
-      socket.on(SOCKET_EVENTS.CONNECT, () => {
-        console.log('Socket connected successfully');
+      // Update connection state
+      setIsConnected(socket.connected);
+
+      // Set up event listeners for state management
+      const handleConnect = () => {
         setIsConnected(true);
         setError(null);
-      });
+      };
 
-      socket.on(SOCKET_EVENTS.CONNECT_ERROR, (err) => {
-        console.error('Socket connection error:', err);
+      const handleDisconnect = () => {
+        setIsConnected(false);
+      };
+
+      const handleConnectError = (err: any) => {
         setIsConnected(false);
         setError(`Connection failed: ${err.message}`);
-      });
+      };
 
-      socket.on(SOCKET_EVENTS.DISCONNECT, (reason) => {
-        console.log('Socket disconnected:', reason);
-        setIsConnected(false);
-        
-        if (reason === 'io server disconnect') {
-          // Server initiated disconnect, reconnect manually
-          socket.connect();
-        }
-      });
-
-      socket.on(SOCKET_EVENTS.RECONNECT, (attemptNumber) => {
-        console.log('Socket reconnected after', attemptNumber, 'attempts');
+      const handleReconnect = () => {
         setIsConnected(true);
         setError(null);
-      });
+      };
 
-      socket.on(SOCKET_EVENTS.RECONNECT_ATTEMPT, (attemptNumber) => {
-        console.log('Socket reconnection attempt:', attemptNumber);
-        setError(`Reconnecting... (attempt ${attemptNumber})`);
-      });
-
-      socket.on(SOCKET_EVENTS.RECONNECT_ERROR, (err) => {
-        console.error('Socket reconnection error:', err);
+      const handleReconnectError = (err: any) => {
         setError(`Reconnection failed: ${err.message}`);
-      });
+      };
 
-      socket.on(SOCKET_EVENTS.RECONNECT_FAILED, () => {
-        console.error('Socket reconnection failed after all attempts');
+      const handleReconnectFailed = () => {
         setError('Failed to reconnect after multiple attempts');
         setIsConnected(false);
-      });
+      };
 
-      socketRef.current = socket;
-    } catch (err) {
+      // Add event listeners
+      socket.on(SOCKET_EVENTS.CONNECT, handleConnect);
+      socket.on(SOCKET_EVENTS.DISCONNECT, handleDisconnect);
+      socket.on(SOCKET_EVENTS.CONNECT_ERROR, handleConnectError);
+      socket.on(SOCKET_EVENTS.RECONNECT, handleReconnect);
+      socket.on(SOCKET_EVENTS.RECONNECT_ERROR, handleReconnectError);
+      socket.on(SOCKET_EVENTS.RECONNECT_FAILED, handleReconnectFailed);
+
+      // Store cleanup function
+      socketRef.current.cleanup = () => {
+        socket.off(SOCKET_EVENTS.CONNECT, handleConnect);
+        socket.off(SOCKET_EVENTS.DISCONNECT, handleDisconnect);
+        socket.off(SOCKET_EVENTS.CONNECT_ERROR, handleConnectError);
+        socket.off(SOCKET_EVENTS.RECONNECT, handleReconnect);
+        socket.off(SOCKET_EVENTS.RECONNECT_ERROR, handleReconnectError);
+        socket.off(SOCKET_EVENTS.RECONNECT_FAILED, handleReconnectFailed);
+      };
+
+    } catch (err: any) {
       console.error('Failed to initialize socket:', err);
-      setError('Failed to initialize connection');
+      setError(err.message || 'Failed to initialize connection');
     }
-  }, [serverUrl]);
+  }, []);
 
   const emit = useCallback((event: string, data?: any) => {
     if (socketRef.current && isConnected) {
@@ -114,21 +86,20 @@ export const useSocket = (serverUrl: string): UseSocketReturn => {
     }
   }, [isConnected]);
 
-  const disconnect = useCallback(() => {
-    if (socketRef.current) {
-      socketRef.current.disconnect();
-      socketRef.current = null;
-      setIsConnected(false);
+  const cleanup = useCallback(() => {
+    if (socketRef.current?.cleanup) {
+      socketRef.current.cleanup();
     }
+    socketRef.current = null;
   }, []);
 
   useEffect(() => {
     initializeSocket();
 
     return () => {
-      disconnect();
+      cleanup();
     };
-  }, [initializeSocket, disconnect]);
+  }, [initializeSocket, cleanup]);
 
   return {
     isConnected,
@@ -141,43 +112,42 @@ export const useSocket = (serverUrl: string): UseSocketReturn => {
  * Hook for socket event listeners with automatic cleanup
  */
 export const useSocketEvent = <T = any>(
-  socket: Socket | null,
   event: string,
-  handler: (data: T) => void
+  handler: (data: T) => void,
+  deps: any[] = []
 ) => {
   useEffect(() => {
-    if (!socket) return;
+    try {
+      const socket = getSocket();
+      socket.on(event, handler);
 
-    socket.on(event, handler);
-
-    return () => {
-      socket.off(event, handler);
-    };
-  }, [socket, event, handler]);
+      return () => {
+        socket.off(event, handler);
+      };
+    } catch (error) {
+      console.error('Error setting up socket event listener:', error);
+    }
+  }, [event, ...deps]);
 };
 
 /**
- * Hook for managing socket with event listeners
+ * Hook for managing socket with event listeners  
+ * DEPRECATED: Use useSocket and useSocketEvent instead
  */
-export const useSocketWithEvents = (serverUrl: string) => {
-  const { isConnected, error, emit } = useSocket(serverUrl);
+export const useSocketWithEvents = () => {
+  console.warn('useSocketWithEvents is deprecated. Use useSocket and useSocketEvent instead.');
+  
+  const { isConnected, error, emit } = useSocket();
   const [socket, setSocket] = useState<Socket | null>(null);
 
   useEffect(() => {
-    const token = AuthStorage.getToken();
-    if (!token) return;
-
-    const socketInstance = io(serverUrl, {
-      auth: { token: `Bearer ${token}` },
-    });
-
-    setSocket(socketInstance);
-
-    return () => {
-      socketInstance.disconnect();
-      setSocket(null);
-    };
-  }, [serverUrl]);
+    try {
+      const socketInstance = getSocket();
+      setSocket(socketInstance);
+    } catch (error) {
+      console.error('Error getting socket instance:', error);
+    }
+  }, []);
 
   const on = useCallback((event: string, handler: (data: any) => void) => {
     if (socket) {
