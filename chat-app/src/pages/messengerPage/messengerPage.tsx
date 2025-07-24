@@ -95,13 +95,14 @@ export default function MessengerPage() {
         
         // If message is not for current chat, add to unread
         if (messageData.chat?._id !== id) {
-            const isAlreadyUnread = unreadMessages.some(msg => msg._id === messageData._id);
+            const currentUnread = unreadMessages || [];
+            const isAlreadyUnread = currentUnread.some(msg => msg._id === messageData._id);
             if (!isAlreadyUnread) {
-                setUnreadMessages([...unreadMessages, messageData]);
+                setUnreadMessages([...currentUnread, messageData]);
             }
         } else {
             // Remove from unread if it was there
-            removeUnreadById(messageData._id);
+            removeUnreadById([messageData._id]);
         }
     }, [addToMessages, id, unreadMessages, setUnreadMessages, removeUnreadById]);
 
@@ -110,9 +111,10 @@ export default function MessengerPage() {
         console.log('📨 Received new contact message:', messageData);
         
         // Add to unread messages if not already there
-        const isAlreadyUnread = unreadMessages.some(msg => msg._id === messageData._id);
+        const currentUnread = unreadMessages || [];
+        const isAlreadyUnread = currentUnread.some(msg => msg._id === messageData._id);
         if (!isAlreadyUnread) {
-            setUnreadMessages([...unreadMessages, messageData]);
+            setUnreadMessages([...currentUnread, messageData]);
             playNotificationSound();
         }
     }, [unreadMessages, setUnreadMessages]);
