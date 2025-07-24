@@ -1,6 +1,6 @@
 import { IChat, IMessage } from "../types"
 import { base_url } from "./baseUrl"
-
+import { AuthStorage } from "../utils/storage.utils"
 
 export const getContacts = async (): Promise<IChat[]> => {
     const { data } = await base_url.get('chat/getAllRooms' )
@@ -18,12 +18,20 @@ export const selectChat = async (selectedRoom: string): Promise<IChat> => {
 }
 
 export const sendMessage = async (id: string, content: string) => {
-    const { data } = await base_url.post('messages', { chatId: id, content, myId: localStorage._id })
+    const myId = AuthStorage.getUserId();
+    if (!myId) {
+        throw new Error('User ID not found. Please log in again.');
+    }
+    
+    console.log('📤 API Request - Send Message:', { chatId: id, content, myId });
+    const { data } = await base_url.post('messages', { chatId: id, content, myId })
+    console.log('✅ API Response - Message sent:', data);
     return data
 }
 
 export const getUnreadMessages = async():Promise<IMessage[]>=>{
-    const { data } = await base_url.get(`messages/${localStorage._id}`)
+    const myId = AuthStorage.getUserId();
+    const { data } = await base_url.get(`messages/${myId}`)
     return data
 }
 
@@ -33,7 +41,8 @@ export const chancgeUnwatchStatus = async(ids:string[]) =>{
 }
 
 export const createRoom = async(selectedId:string)=>{
-    const {data} = await base_url.post('/chat/create-room',{_id: [selectedId], myId:localStorage._id})
+    const myId = AuthStorage.getUserId();
+    const {data} = await base_url.post('/chat/create-room',{_id: [selectedId], myId})
     return data
 }
 

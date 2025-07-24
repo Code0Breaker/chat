@@ -86,25 +86,38 @@ export default function Messages({ id }: { id: string }) {
 
     // Send message function
     const send = useCallback(async () => {
-        if (!text.trim() || !id || isLoading || !socket) return
+        if (!text.trim() || !id || isLoading) return // ✅ Removed socket requirement
 
         try {
             setLoading(true)
             clearError()
             
-            // Send message via API
-            const messageData = await sendMessage(id, text.trim())
+            console.log('📤 Sending message...', { chatId: id, content: text.trim() });
             
-            // Emit to socket for real-time updates
-            socket.emit(SOCKET_EVENTS.CHAT, messageData)
+            // Send message via API (this should always work)
+            const messageData = await sendMessage(id, text.trim())
+            console.log('✅ Message sent successfully:', messageData);
             
             // Add to local state optimistically
             addToMessages(messageData)
             
             // Clear input
             setText('')
+            
+            // Try to emit to socket for real-time updates (optional)
+            if (socket && socket.connected) {
+                try {
+                    socket.emit(SOCKET_EVENTS.CHAT, messageData)
+                    console.log('🔌 Socket notification sent');
+                } catch (socketError) {
+                    console.warn('⚠️ Socket emit failed (but message was sent):', socketError);
+                }
+            } else {
+                console.warn('⚠️ Socket not available (but message was sent)');
+            }
+            
         } catch (err) {
-            console.error('Failed to send message:', err)
+            console.error('❌ Failed to send message:', err)
             setError('Failed to send message')
         } finally {
             setLoading(false)
