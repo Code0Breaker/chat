@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { Socket } from 'socket.io-client';
 import { UseSocketReturn } from '../types';
-import { getSocket, disconnectSocket, isSocketConnected } from '../config/socket';
+import { getSocket, getSocketSafely, disconnectSocket, isSocketConnected } from '../config/socket';
 import { SOCKET_EVENTS } from '../config/constants';
 
 /**
@@ -20,7 +20,12 @@ export const useSocket = (): UseSocketReturn => {
     }
 
     try {
-      const socket = getSocket();
+      const socket = getSocketSafely();
+      if (!socket) {
+        setError('Failed to initialize socket connection');
+        return;
+      }
+
       socketRef.current = socket;
 
       // Update connection state
@@ -111,24 +116,52 @@ export const useSocket = (): UseSocketReturn => {
 };
 
 /**
- * Hook for socket event listeners with automatic cleanup
+ * Hook for socket event listeners with automatic cleanup and retry logic
  */
 export const useSocketEvent = <T = any>(
   event: string,
   handler: (data: T) => void,
   deps: any[] = []
 ) => {
-  useEffect(() => {
-    try {
-      const socket = getSocket();
-      socket.on(event, handler);
+  const retryCount = useRef(0);
+  const maxRetries = 3;
 
-      return () => {
-        socket.off(event, handler);
-      };
-    } catch (error) {
-      console.error('Error setting up socket event listener:', error);
-    }
+  useEffect(() => {
+    const setupListener = () => {
+      try {
+        const socket = getSocketSafely();
+        if (!socket) {
+          if (retryCount.current < maxRetries) {
+            retryCount.current++;
+            console.warn(`⚠️ Socket not available for event ${event}, retrying in 2s... (${retryCount.current}/${maxRetries})`);
+            setTimeout(setupListener, 2000);
+          } else {
+            console.error(`❌ Failed to set up socket event listener for ${event} after ${maxRetries} retries`);
+          }
+          return;
+        }
+
+        // Reset retry count on successful connection
+        retryCount.current = 0;
+        
+        console.log(`🔌 Setting up socket event listener for: ${event}`);
+        socket.on(event, handler);
+
+        return () => {
+          console.log(`🔌 Cleaning up socket event listener for: ${event}`);
+          socket.off(event, handler);
+        };
+      } catch (error) {
+        console.error(`Error setting up socket event listener for ${event}:`, error);
+        if (retryCount.current < maxRetries) {
+          retryCount.current++;
+          setTimeout(setupListener, 2000);
+        }
+      }
+    };
+
+    const cleanup = setupListener();
+    return cleanup;
   }, [event, ...deps]);
 };
 
@@ -143,12 +176,8 @@ export const useSocketWithEvents = () => {
   const [socket, setSocket] = useState<Socket | null>(null);
 
   useEffect(() => {
-    try {
-      const socketInstance = getSocket();
-      setSocket(socketInstance);
-    } catch (error) {
-      console.error('Error getting socket instance:', error);
-    }
+    const socketInstance = getSocketSafely();
+    setSocket(socketInstance);
   }, []);
 
   const on = useCallback((event: string, handler: (data: any) => void) => {

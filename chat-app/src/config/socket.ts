@@ -4,6 +4,7 @@ import { AuthStorage } from '../utils/storage.utils';
 
 let socket: Socket | null = null;
 let isConnecting = false;
+let connectionPromise: Promise<Socket> | null = null;
 
 /**
  * Get or create socket instance with enhanced configuration
@@ -14,9 +15,19 @@ export const getSocket = (): Socket => {
     return socket;
   }
 
-  // Prevent multiple connection attempts
-  if (isConnecting) {
-    throw new Error('Socket connection already in progress');
+  // If connection is in progress, throw a more graceful error
+  if (isConnecting && !socket) {
+    console.warn('⏳ Socket connection in progress, please wait...');
+    // Return a dummy socket that will fail gracefully rather than throwing
+    throw new Error('Socket connection in progress');
+  }
+
+  // If we have a disconnected socket, clean it up
+  if (socket && !socket.connected) {
+    console.log('🧹 Cleaning up disconnected socket');
+    socket.removeAllListeners();
+    socket.disconnect();
+    socket = null;
   }
 
   const serverUrl = import.meta.env.VITE_APP_SERVER_URL || 'http://localhost:3001';
@@ -26,14 +37,9 @@ export const getSocket = (): Socket => {
     throw new Error('Authentication token required for socket connection');
   }
 
-  // Clean up existing socket if it exists but is disconnected
-  if (socket && !socket.connected) {
-    socket.removeAllListeners();
-    socket.disconnect();
-    socket = null;
-  }
-
+  // Start connection process
   isConnecting = true;
+  console.log('🔌 Initializing socket connection to:', serverUrl);
 
   try {
     socket = io(serverUrl, {
@@ -47,7 +53,7 @@ export const getSocket = (): Socket => {
       reconnectionDelayMax: UI_CONSTANTS.RECONNECTION_DELAY_MAX,
       timeout: UI_CONSTANTS.SOCKET_TIMEOUT,
       autoConnect: true,
-      forceNew: false, // ✅ Explicitly set to false
+      forceNew: false,
       path: '/socket.io/',
       withCredentials: true,
       extraHeaders: {
@@ -84,12 +90,12 @@ export const getSocket = (): Socket => {
       // Only reconnect if it was a server-initiated disconnect
       if (reason === 'io server disconnect') {
         console.log('🔄 Server initiated disconnect, attempting reconnect...');
-        // The socket.io client will handle reconnection automatically
       }
     });
 
     socket.on(SOCKET_EVENTS.RECONNECT, (attemptNumber) => {
       console.log('🔄 Socket reconnected after', attemptNumber, 'attempts');
+      isConnecting = false;
     });
 
     socket.on(SOCKET_EVENTS.RECONNECT_ATTEMPT, (attemptNumber) => {
@@ -107,8 +113,21 @@ export const getSocket = (): Socket => {
 
     return socket;
   } catch (error) {
+    console.error('❌ Failed to create socket:', error);
     isConnecting = false;
     throw error;
+  }
+};
+
+/**
+ * Get socket safely without throwing errors
+ */
+export const getSocketSafely = (): Socket | null => {
+  try {
+    return getSocket();
+  } catch (error) {
+    console.warn('⚠️ Could not get socket:', error);
+    return null;
   }
 };
 
@@ -122,6 +141,7 @@ export const disconnectSocket = (): void => {
     socket = null;
   }
   isConnecting = false;
+  connectionPromise = null;
 };
 
 /**
@@ -129,9 +149,9 @@ export const disconnectSocket = (): void => {
  */
 export const emitEvent = (event: string, data?: any): boolean => {
   try {
-    const socketInstance = getSocket();
+    const socketInstance = getSocketSafely();
     
-    if (socketInstance.connected) {
+    if (socketInstance && socketInstance.connected) {
       socketInstance.emit(event, data);
       return true;
     }

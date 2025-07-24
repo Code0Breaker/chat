@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback, useMemo } from 'react'
 import { selectChat, sendMessage } from '../../apis/chatApis'
 import { IMessage } from '../../types'
 import { SendIcon } from '../../assets/icons/sendIcon'
-import { getSocket } from '../../config/socket'
+import { getSocketSafely } from '../../config/socket'
 import { useChatStore } from '../../store/chatStore'
 import { timeAgo } from '../../utils/time.utils'
 import { SOCKET_EVENTS } from '../../config/constants'
@@ -16,14 +16,9 @@ export default function Messages({ id }: { id: string }) {
     const [typerId, setTyperId] = useState<string | null>(null)
     const [roomId, setRoomId] = useState<string | null>(null)
     
-    // Get socket instance once and memoize it
+    // Get socket instance once and memoize it (safely)
     const socket = useMemo(() => {
-        try {
-            return getSocket();
-        } catch (error) {
-            console.error('Failed to get socket:', error);
-            return null;
-        }
+        return getSocketSafely();
     }, []);
 
     // Load messages when chat ID changes
@@ -34,7 +29,9 @@ export default function Messages({ id }: { id: string }) {
             try {
                 setLoading(true)
                 clearError()
+                console.log('📤 Loading messages for chat:', id);
                 const data = await selectChat(id)
+                console.log('✅ Messages loaded:', data.messages?.length || 0, 'messages');
                 setMessages(data.messages as IMessage[])
             } catch (err) {
                 console.error('Failed to load messages:', err)
@@ -47,10 +44,11 @@ export default function Messages({ id }: { id: string }) {
         loadMessages()
     }, [id, setMessages, setLoading, setError, clearError])
 
-    // Handle typing indicators using useSocketEvent
+    // Handle typing indicators using useSocketEvent with better error handling
     useSocketEvent<{ roomId: string; userId: string; fullname: string }>(
         SOCKET_EVENTS.IS_TYPING, 
         (userData) => {
+            console.log('👋 Typing event received:', userData);
             if (userData.roomId === id && userData.userId !== AuthStorage.getUserId()) {
                 setTyperId(userData.userId)
                 setRoomId(userData.roomId)
@@ -58,6 +56,21 @@ export default function Messages({ id }: { id: string }) {
             }
         }, 
         [id]
+    );
+
+    // Handle incoming chat messages with better logging
+    useSocketEvent<IMessage>(
+        SOCKET_EVENTS.CHAT, 
+        (messageData) => {
+            console.log('📨 Received chat message:', messageData);
+            if (messageData.chat?._id === id) {
+                console.log('✅ Adding message to current chat');
+                addToMessages(messageData);
+            } else {
+                console.log('ℹ️ Message for different chat, ignoring');
+            }
+        }, 
+        [id, addToMessages]
     );
 
     // Clear typing indicator after timeout
@@ -86,7 +99,7 @@ export default function Messages({ id }: { id: string }) {
 
     // Send message function
     const send = useCallback(async () => {
-        if (!text.trim() || !id || isLoading) return // ✅ Removed socket requirement
+        if (!text.trim() || !id || isLoading) return
 
         try {
             setLoading(true)

@@ -2,7 +2,7 @@ import { useEffect, useState, useMemo } from 'react'
 import Contact from '../contact/contact'
 import { getContacts } from '../../apis/chatApis'
 import { IChat } from '../../types'
-import { getSocket } from '../../config/socket'
+import { getSocketSafely } from '../../config/socket'
 import { SOCKET_EVENTS } from '../../config/constants'
 
 export default function Contacts({ id }: { id: string }) {
@@ -12,12 +12,7 @@ export default function Contacts({ id }: { id: string }) {
   
   // Get socket instance once and memoize it, but don't block API calls if it fails
   const socket = useMemo(() => {
-    try {
-      return getSocket();
-    } catch (error) {
-      console.error('Failed to get socket:', error);
-      return null;
-    }
+    return getSocketSafely();
   }, []);
 
   useEffect(() => {
@@ -33,15 +28,15 @@ export default function Contacts({ id }: { id: string }) {
         
         setContacts(data)
         
-        // Only join rooms if socket is available
-        if (socket) {
+        // Only join rooms if socket is available and connected
+        if (socket && socket.connected) {
           const roomIds = data.map(item => item._id).filter(Boolean);
           if (roomIds.length > 0) {
             console.log('🔌 Joining rooms:', roomIds);
             socket.emit(SOCKET_EVENTS.JOIN, roomIds);
           }
         } else {
-          console.warn('⚠️ Socket not available, skipping room join');
+          console.warn('⚠️ Socket not available or not connected, skipping room join');
         }
         
       } catch (err) {
