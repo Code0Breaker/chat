@@ -3,33 +3,12 @@ import { SOCKET_EVENTS, UI_CONSTANTS } from './constants';
 import { AuthStorage } from '../utils/storage.utils';
 
 let socket: Socket | null = null;
-let isConnecting = false;
 let connectionPromise: Promise<Socket> | null = null;
 
 /**
- * Get or create socket instance with enhanced configuration
+ * Create a new socket connection
  */
-export const getSocket = (): Socket => {
-  // Return existing connected socket
-  if (socket && socket.connected) {
-    return socket;
-  }
-
-  // If connection is in progress, throw a more graceful error
-  if (isConnecting && !socket) {
-    console.warn('⏳ Socket connection in progress, please wait...');
-    // Return a dummy socket that will fail gracefully rather than throwing
-    throw new Error('Socket connection in progress');
-  }
-
-  // If we have a disconnected socket, clean it up
-  if (socket && !socket.connected) {
-    console.log('🧹 Cleaning up disconnected socket');
-    socket.removeAllListeners();
-    socket.disconnect();
-    socket = null;
-  }
-
+const createSocket = (): Promise<Socket> => {
   const serverUrl = import.meta.env.VITE_APP_SERVER_URL || 'http://localhost:3001';
   const token = AuthStorage.getToken();
 
@@ -37,16 +16,14 @@ export const getSocket = (): Socket => {
     throw new Error('Authentication token required for socket connection');
   }
 
-  // Start connection process
-  isConnecting = true;
-  console.log('🔌 Initializing socket connection to:', serverUrl);
+  console.log('🔌 Creating new socket connection to:', serverUrl);
 
-  try {
-    socket = io(serverUrl, {
+  return new Promise((resolve, reject) => {
+    const newSocket = io(serverUrl, {
       auth: {
         token: `Bearer ${token}`,
       },
-      transports: ['polling', 'websocket'],
+      transports: ['polling'], // Start with polling only, let socket.io handle upgrades
       reconnection: true,
       reconnectionAttempts: UI_CONSTANTS.RECONNECTION_ATTEMPTS,
       reconnectionDelay: UI_CONSTANTS.RECONNECTION_DELAY,
@@ -61,60 +38,136 @@ export const getSocket = (): Socket => {
       },
       upgrade: true,
       rememberUpgrade: true,
-      secure: true,
-      rejectUnauthorized: false,
-      transportOptions: {
-        polling: {
-          extraHeaders: {
-            Authorization: `Bearer ${token}`,
-          },
-        },
-      },
     });
 
-    // Enhanced event listeners
-    socket.on(SOCKET_EVENTS.CONNECT, () => {
+    // Set up one-time connection handlers
+    const onConnect = () => {
       console.log('🔌 Socket connected successfully');
-      isConnecting = false;
-    });
+      socket = newSocket;
+      cleanup();
+      resolve(newSocket);
+    };
 
-    socket.on(SOCKET_EVENTS.CONNECT_ERROR, (error) => {
+    const onConnectError = (error: any) => {
       console.error('❌ Socket connection error:', error);
-      isConnecting = false;
-    });
+      cleanup();
+      reject(error);
+    };
 
-    socket.on(SOCKET_EVENTS.DISCONNECT, (reason) => {
+    const onDisconnect = (reason: string) => {
       console.log('🔌 Socket disconnected:', reason);
-      isConnecting = false;
-      
-      // Only reconnect if it was a server-initiated disconnect
-      if (reason === 'io server disconnect') {
-        console.log('🔄 Server initiated disconnect, attempting reconnect...');
+      if (socket === newSocket) {
+        socket = null;
       }
-    });
+    };
 
-    socket.on(SOCKET_EVENTS.RECONNECT, (attemptNumber) => {
+    const onReconnect = (attemptNumber: number) => {
       console.log('🔄 Socket reconnected after', attemptNumber, 'attempts');
-      isConnecting = false;
-    });
+      socket = newSocket;
+    };
 
-    socket.on(SOCKET_EVENTS.RECONNECT_ATTEMPT, (attemptNumber) => {
-      console.log('🔄 Socket reconnection attempt:', attemptNumber);
-    });
-
-    socket.on(SOCKET_EVENTS.RECONNECT_ERROR, (error) => {
+    const onReconnectError = (error: any) => {
       console.error('❌ Socket reconnection error:', error);
-    });
+    };
 
-    socket.on(SOCKET_EVENTS.RECONNECT_FAILED, () => {
+    const onReconnectFailed = () => {
       console.error('❌ Socket reconnection failed after all attempts');
-      isConnecting = false;
-    });
+      if (socket === newSocket) {
+        socket = null;
+      }
+    };
 
+    const cleanup = () => {
+      newSocket.off(SOCKET_EVENTS.CONNECT, onConnect);
+      newSocket.off(SOCKET_EVENTS.CONNECT_ERROR, onConnectError);
+    };
+
+    // Add event listeners
+    newSocket.once(SOCKET_EVENTS.CONNECT, onConnect);
+    newSocket.once(SOCKET_EVENTS.CONNECT_ERROR, onConnectError);
+    newSocket.on(SOCKET_EVENTS.DISCONNECT, onDisconnect);
+    newSocket.on(SOCKET_EVENTS.RECONNECT, onReconnect);
+    newSocket.on(SOCKET_EVENTS.RECONNECT_ERROR, onReconnectError);
+    newSocket.on(SOCKET_EVENTS.RECONNECT_FAILED, onReconnectFailed);
+
+    // Set a timeout for connection
+    const connectionTimeout = setTimeout(() => {
+      if (!newSocket.connected) {
+        console.error('❌ Socket connection timeout');
+        cleanup();
+        newSocket.disconnect();
+        reject(new Error('Socket connection timeout'));
+      }
+    }, UI_CONSTANTS.SOCKET_TIMEOUT);
+
+    newSocket.once(SOCKET_EVENTS.CONNECT, () => {
+      clearTimeout(connectionTimeout);
+    });
+  });
+};
+
+/**
+ * Get or create socket instance with proper promise-based singleton
+ */
+export const getSocket = (): Socket => {
+  // Return existing connected socket
+  if (socket && socket.connected) {
     return socket;
+  }
+
+  // If connection is in progress, throw error to prevent multiple attempts
+  if (connectionPromise) {
+    throw new Error('Socket connection already in progress');
+  }
+
+  // Clean up disconnected socket
+  if (socket && !socket.connected) {
+    console.log('🧹 Cleaning up disconnected socket');
+    socket.removeAllListeners();
+    socket.disconnect();
+    socket = null;
+  }
+
+  throw new Error('Socket not connected, use getSocketAsync() for async connection');
+};
+
+/**
+ * Get socket asynchronously with proper singleton pattern
+ */
+export const getSocketAsync = async (): Promise<Socket> => {
+  // Return existing connected socket
+  if (socket && socket.connected) {
+    return socket;
+  }
+
+  // If connection is already in progress, wait for it
+  if (connectionPromise) {
+    console.log('⏳ Socket connection in progress, waiting...');
+    try {
+      return await connectionPromise;
+    } catch (error) {
+      connectionPromise = null;
+      throw error;
+    }
+  }
+
+  // Clean up disconnected socket
+  if (socket && !socket.connected) {
+    console.log('🧹 Cleaning up disconnected socket');
+    socket.removeAllListeners();
+    socket.disconnect();
+    socket = null;
+  }
+
+  // Start new connection
+  connectionPromise = createSocket();
+
+  try {
+    const newSocket = await connectionPromise;
+    connectionPromise = null;
+    return newSocket;
   } catch (error) {
-    console.error('❌ Failed to create socket:', error);
-    isConnecting = false;
+    connectionPromise = null;
     throw error;
   }
 };
@@ -132,6 +185,18 @@ export const getSocketSafely = (): Socket | null => {
 };
 
 /**
+ * Initialize socket connection asynchronously
+ */
+export const initializeSocket = async (): Promise<Socket | null> => {
+  try {
+    return await getSocketAsync();
+  } catch (error) {
+    console.error('❌ Failed to initialize socket:', error);
+    return null;
+  }
+};
+
+/**
  * Disconnect and cleanup socket
  */
 export const disconnectSocket = (): void => {
@@ -140,7 +205,6 @@ export const disconnectSocket = (): void => {
     socket.disconnect();
     socket = null;
   }
-  isConnecting = false;
   connectionPromise = null;
 };
 

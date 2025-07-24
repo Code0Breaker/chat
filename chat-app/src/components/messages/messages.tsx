@@ -1,8 +1,8 @@
-import { useEffect, useState, useCallback, useMemo } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { selectChat, sendMessage } from '../../apis/chatApis'
 import { IMessage } from '../../types'
 import { SendIcon } from '../../assets/icons/sendIcon'
-import { getSocketSafely } from '../../config/socket'
+import { getSocketSafely, emitEvent } from '../../config/socket'
 import { useChatStore } from '../../store/chatStore'
 import { timeAgo } from '../../utils/time.utils'
 import { SOCKET_EVENTS } from '../../config/constants'
@@ -15,11 +15,6 @@ export default function Messages({ id }: { id: string }) {
     const [isTyping, setIsTyping] = useState(false)
     const [typerId, setTyperId] = useState<string | null>(null)
     const [roomId, setRoomId] = useState<string | null>(null)
-    
-    // Get socket instance once and memoize it (safely)
-    const socket = useMemo(() => {
-        return getSocketSafely();
-    }, []);
 
     // Load messages when chat ID changes
     useEffect(() => {
@@ -86,7 +81,7 @@ export default function Messages({ id }: { id: string }) {
 
     // Emit typing when user is typing
     useEffect(() => {
-        if (!socket || !text.trim() || !id) return;
+        if (!text.trim() || !id) return;
 
         const userId = AuthStorage.getUserId()
         const userData = {
@@ -94,8 +89,13 @@ export default function Messages({ id }: { id: string }) {
             userId: userId,
             fullname: AuthStorage.getFullname() || 'User'
         }
-        socket.emit(SOCKET_EVENTS.IS_TYPING, userData)
-    }, [text, id, socket])
+        
+        // Use emitEvent for better error handling
+        const success = emitEvent(SOCKET_EVENTS.IS_TYPING, userData);
+        if (!success) {
+            console.warn('⚠️ Failed to emit typing event');
+        }
+    }, [text, id])
 
     // Send message function
     const send = useCallback(async () => {
@@ -118,13 +118,9 @@ export default function Messages({ id }: { id: string }) {
             setText('')
             
             // Try to emit to socket for real-time updates (optional)
-            if (socket && socket.connected) {
-                try {
-                    socket.emit(SOCKET_EVENTS.CHAT, messageData)
-                    console.log('🔌 Socket notification sent');
-                } catch (socketError) {
-                    console.warn('⚠️ Socket emit failed (but message was sent):', socketError);
-                }
+            const success = emitEvent(SOCKET_EVENTS.CHAT, messageData);
+            if (success) {
+                console.log('🔌 Socket notification sent');
             } else {
                 console.warn('⚠️ Socket not available (but message was sent)');
             }
@@ -135,7 +131,7 @@ export default function Messages({ id }: { id: string }) {
         } finally {
             setLoading(false)
         }
-    }, [text, id, isLoading, socket, addToMessages, setLoading, setError, clearError])
+    }, [text, id, isLoading, addToMessages, setLoading, setError, clearError])
 
     // Handle Enter key press
     const handleKeyPress = useCallback((e: React.KeyboardEvent) => {

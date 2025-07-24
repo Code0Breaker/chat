@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { Socket } from 'socket.io-client';
 import { UseSocketReturn } from '../types';
-import { getSocket, getSocketSafely, disconnectSocket, isSocketConnected } from '../config/socket';
+import { getSocketSafely, initializeSocket, disconnectSocket, isSocketConnected } from '../config/socket';
 import { SOCKET_EVENTS } from '../config/constants';
 
 /**
@@ -13,14 +13,19 @@ export const useSocket = (): UseSocketReturn => {
   const [error, setError] = useState<string | null>(null);
   const socketRef = useRef<Socket | null>(null);
   const cleanupRef = useRef<(() => void) | null>(null);
+  const initializingRef = useRef(false);
 
-  const initializeSocket = useCallback(() => {
-    if (socketRef.current) {
+  const initializeSocketConnection = useCallback(async () => {
+    if (socketRef.current || initializingRef.current) {
       return;
     }
 
+    initializingRef.current = true;
+
     try {
-      const socket = getSocketSafely();
+      console.log('🔄 Initializing socket connection...');
+      const socket = await initializeSocket();
+      
       if (!socket) {
         setError('Failed to initialize socket connection');
         return;
@@ -33,29 +38,35 @@ export const useSocket = (): UseSocketReturn => {
 
       // Set up event listeners for state management
       const handleConnect = () => {
+        console.log('✅ Socket connection established');
         setIsConnected(true);
         setError(null);
       };
 
       const handleDisconnect = () => {
+        console.log('❌ Socket disconnected');
         setIsConnected(false);
       };
 
       const handleConnectError = (err: any) => {
+        console.error('❌ Socket connection error:', err);
         setIsConnected(false);
         setError(`Connection failed: ${err.message}`);
       };
 
       const handleReconnect = () => {
+        console.log('✅ Socket reconnected');
         setIsConnected(true);
         setError(null);
       };
 
       const handleReconnectError = (err: any) => {
+        console.error('❌ Socket reconnection error:', err);
         setError(`Reconnection failed: ${err.message}`);
       };
 
       const handleReconnectFailed = () => {
+        console.error('❌ Socket reconnection failed permanently');
         setError('Failed to reconnect after multiple attempts');
         setIsConnected(false);
       };
@@ -79,8 +90,10 @@ export const useSocket = (): UseSocketReturn => {
       };
 
     } catch (err: any) {
-      console.error('Failed to initialize socket:', err);
+      console.error('❌ Failed to initialize socket:', err);
       setError(err.message || 'Failed to initialize connection');
+    } finally {
+      initializingRef.current = false;
     }
   }, []);
 
@@ -98,15 +111,16 @@ export const useSocket = (): UseSocketReturn => {
       cleanupRef.current = null;
     }
     socketRef.current = null;
+    initializingRef.current = false;
   }, []);
 
   useEffect(() => {
-    initializeSocket();
+    initializeSocketConnection();
 
     return () => {
       cleanup();
     };
-  }, [initializeSocket, cleanup]);
+  }, [initializeSocketConnection, cleanup]);
 
   return {
     isConnected,
@@ -125,16 +139,17 @@ export const useSocketEvent = <T = any>(
 ) => {
   const retryCount = useRef(0);
   const maxRetries = 3;
+  const retryTimeout = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     const setupListener = () => {
       try {
         const socket = getSocketSafely();
-        if (!socket) {
+        if (!socket || !socket.connected) {
           if (retryCount.current < maxRetries) {
             retryCount.current++;
-            console.warn(`⚠️ Socket not available for event ${event}, retrying in 2s... (${retryCount.current}/${maxRetries})`);
-            setTimeout(setupListener, 2000);
+            console.warn(`⚠️ Socket not available for event ${event}, retrying in 3s... (${retryCount.current}/${maxRetries})`);
+            retryTimeout.current = setTimeout(setupListener, 3000);
           } else {
             console.error(`❌ Failed to set up socket event listener for ${event} after ${maxRetries} retries`);
           }
@@ -150,12 +165,16 @@ export const useSocketEvent = <T = any>(
         return () => {
           console.log(`🔌 Cleaning up socket event listener for: ${event}`);
           socket.off(event, handler);
+          if (retryTimeout.current) {
+            clearTimeout(retryTimeout.current);
+            retryTimeout.current = null;
+          }
         };
       } catch (error) {
         console.error(`Error setting up socket event listener for ${event}:`, error);
         if (retryCount.current < maxRetries) {
           retryCount.current++;
-          setTimeout(setupListener, 2000);
+          retryTimeout.current = setTimeout(setupListener, 3000);
         }
       }
     };
