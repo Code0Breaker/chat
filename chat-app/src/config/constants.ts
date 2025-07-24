@@ -13,9 +13,9 @@ export const API_ENDPOINTS = {
     UPDATE_STATUS: '/messages',
   },
   AUTH: {
-    LOGIN: '/auth/login',
-    REGISTER: '/auth/register',
-    REFRESH: '/auth/refresh',
+    LOGIN: '/user/login',
+    REGISTER: '/user/register',
+    REFRESH: '/user/token',
   },
 } as const;
 

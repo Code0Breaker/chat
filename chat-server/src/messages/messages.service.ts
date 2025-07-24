@@ -48,7 +48,9 @@ export class MessagesService {
   async update(ids: string[]) {
     if (ids?.length > 0) {
       const data = await this.messageRepo.update(ids, { isWatched: true });
+      return data;
     }
+    return { affected: 0 };
   }
 
   remove(id: number) {

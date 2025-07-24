@@ -28,8 +28,8 @@ export class MessagesController {
 
   @Patch()
   update(@Body('ids') ids: string[]) {
-    console.log(ids);
-    // return this.messagesService.update(ids);
+    console.log('Updating message status for IDs:', ids);
+    return this.messagesService.update(ids);
   }
 
   @Delete(':id')

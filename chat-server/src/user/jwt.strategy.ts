@@ -9,6 +9,9 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   constructor(private authService: UserService) {
     super({
       jwtFromRequest: ExtractJwt.fromExtractors([
+        // First try to extract from Authorization header
+        ExtractJwt.fromAuthHeaderAsBearerToken(),
+        // Fallback to cookies
         (req: Request) => {
           return req.cookies?.['token'];
         },
