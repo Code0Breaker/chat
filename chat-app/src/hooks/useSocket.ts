@@ -12,6 +12,7 @@ export const useSocket = (): UseSocketReturn => {
   const [isConnected, setIsConnected] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const socketRef = useRef<Socket | null>(null);
+  const cleanupRef = useRef<(() => void) | null>(null);
 
   const initializeSocket = useCallback(() => {
     if (socketRef.current) {
@@ -63,7 +64,7 @@ export const useSocket = (): UseSocketReturn => {
       socket.on(SOCKET_EVENTS.RECONNECT_FAILED, handleReconnectFailed);
 
       // Store cleanup function
-      socketRef.current.cleanup = () => {
+      cleanupRef.current = () => {
         socket.off(SOCKET_EVENTS.CONNECT, handleConnect);
         socket.off(SOCKET_EVENTS.DISCONNECT, handleDisconnect);
         socket.off(SOCKET_EVENTS.CONNECT_ERROR, handleConnectError);
@@ -87,8 +88,9 @@ export const useSocket = (): UseSocketReturn => {
   }, [isConnected]);
 
   const cleanup = useCallback(() => {
-    if (socketRef.current?.cleanup) {
-      socketRef.current.cleanup();
+    if (cleanupRef.current) {
+      cleanupRef.current();
+      cleanupRef.current = null;
     }
     socketRef.current = null;
   }, []);
